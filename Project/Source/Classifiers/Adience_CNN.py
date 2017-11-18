@@ -10,12 +10,14 @@ import ConvHelper
 import pickle
 import csv as csv
 import datetime
+import os as os
 
+current_working_folder = os.path.dirname(os.getcwd())
 
-metadata_files_path = '/Users/saur6410/Google Drive/VT/Dissertation/Deep Learning/Project/Datasets/Adience/'
+metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/')
 train_metadata_filename = 'gender_train.txt'
 test_metadata_filename = 'gender_train.txt'
-image_files_path = '/Users/saur6410/Google Drive/VT/Dissertation/Deep Learning/Project/Datasets/Adience/aligned/'
+image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/aligned/')
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
@@ -112,14 +114,15 @@ def full_layer(input, size):
     return tf.matmul(input, W) + b
 
 def test(sess):
-    print "Starting Test"
-    X = adience.test.images.reshape(10, 20, img_dim, img_dim, n_channels)
-    Y = adience.test.labels.reshape(10, 20, n_classes)
+    print ("Starting Test")
+    start_index = 10
+    number_of_samples = 10
+    X = adience.test.images.reshape(start_index, start_index + number_of_samples, img_dim, img_dim, n_channels)
+    Y = adience.test.labels.reshape(start_index, start_index + number_of_samples, n_classes)
     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
                                                  keep_prob: 1.0})
-                   for i in range(10)])
-    print "Accuracy: {:.4}%".format(acc * 100)
-
+                   for i in range(start_index)])
+    print ("Accuracy: {:.4}%".format(acc * 100))
 adience = AdienceDataManager()
 #images = adience.train.next_batch(1)
 #display_image(images, 2)
@@ -128,16 +131,16 @@ x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
 y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
 keep_prob = tf.placeholder(tf.float32)
 
-conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 96])
+conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 32])
 conv1_pool = ConvHelper.max_pool_2x2(conv1)
-print conv1_pool
-conv2 = ConvHelper.conv_layer(conv1_pool, shape=[5, 5, 96, 256])
+print (conv1_pool)
+conv2 = ConvHelper.conv_layer(conv1_pool, shape=[5, 5, 32, 16])
 conv2_pool = ConvHelper.max_pool_2x2(conv2)
-print conv2_pool
-conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 256, 384])
+print (conv2_pool)
+conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 16, 8])
 conv3_pool = ConvHelper.max_pool_2x2(conv3)
-print conv3_pool
-conv3_flat = tf.reshape(conv3_pool, [-1, 102 * 102 * 384])
+print (conv3_pool)
+conv3_flat = tf.reshape(conv3_pool, [-1, 102 * 102 * 8])
 #conv2_flat = tf.reshape(conv2_pool, [-1, 8 * 8 * 64])
 
 full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
@@ -158,7 +161,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
 STEPS = 10
-MINIBATCH_SIZE = 5
+MINIBATCH_SIZE = 20
 
 print "Starting at:" , datetime.datetime.now()
 with tf.Session() as sess:

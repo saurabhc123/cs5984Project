@@ -8,12 +8,13 @@ import scipy as sc
 import ConvHelper
 import pickle
 import csv as csv
+import datetime
 
 
-metadata_files_path = "C:\\Users\\Chickoo\\Google Drive\\VT\\Dissertation\\Deep Learning\\Project\\Datasets\\Adience\\"
+metadata_files_path = "C:\\Users\\Chickoo\\Google Drive\\VT\\Dissertation\\cs5984Project\\Project\\Datasets\\Adience\\"
 train_metadata_filename = 'gender_train.txt'
 test_metadata_filename = 'gender_train.txt'
-image_files_path = "C:\\Users\\Chickoo\\Google Drive\\VT\\Dissertation\\Deep Learning\\Project\\Datasets\\Adience\\aligned\\"
+image_files_path = "C:\\Users\\Chickoo\\Google Drive\\VT\\Dissertation\\cs5984Project\\Project\\Datasets\\Adience\\aligned\\"
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
@@ -167,12 +168,12 @@ MINIBATCH_SIZE = 14
 with tf.device('/gpu:0'):
     print ("Starting")
     with tf.Session() as sess:
-        
+
         sess.run(tf.global_variables_initializer())
         print(sess.run(c))
-        print ("Initialization done")
+        print ("Initialization done", str(datetime.datetime.now()))
         for epoch in range(STEPS):
-            print ("Starting epoch", epoch)
+            print ("Starting epoch", epoch, " at ",str(datetime.datetime.now()))
             for batch_count in range(20):
                 j = 0
                 batch = cifar.train.next_batch(MINIBATCH_SIZE)
