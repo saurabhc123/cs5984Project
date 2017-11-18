@@ -145,8 +145,9 @@ def train(sess, adience, retrain = False):
     conv3_flat = tf.reshape(conv3_pool, [-1, 13 * 13 * 8])
     #conv2_flat = tf.reshape(conv2_pool, [-1, 8 * 8 * 64])
 
-    full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
-    full_2 = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
+    with tf.variable_scope("FC-7"):
+        full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
+        full_2 = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
     #full1_drop = tf.nn.dropout(full_1, keep_prob=keep_prob)
 
     y_conv = ConvHelper.full_layer(full_2, n_classes)
