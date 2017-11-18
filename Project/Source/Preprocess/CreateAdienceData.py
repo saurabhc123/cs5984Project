@@ -1,8 +1,10 @@
 import os
 import random
-DATA_DIR='/Users/saur6410/Google Drive/VT/Dissertation/Deep Learning/Project/Datasets/Adience/aligned'
-original_folds_dir='/Users/saur6410/Google Drive/VT/Dissertation/Deep Learning/Project/Datasets/Adience'
-out_files_dir='/Users/saur6410/Google Drive/VT/Dissertation/Deep Learning/Project/Datasets/Adience/output'
+import os
+d = os.path.dirname(os.getcwd())
+DATA_DIR= str(d) + '/Datasets/Adience/aligned'
+original_folds_dir= str(d) + '/Datasets/Datasets/Adience'
+out_files_dir= str(d) + '/Datasets/Adience/output'
 
 age_list=['(0, 2)','(4, 6)','(8, 12)','(15, 20)','(25, 32)','(38, 43)','(48, 53)','(60, 100)']
 gender_list=['m','f']
