@@ -75,7 +75,7 @@ def load_data(inputFilenameWithPath):
             data.append(row[0])
             labels.append(int(row[1]))
     #print(len(data))
-    return data[0:12000] , labels[0:12000]
+    return data[0:200] , labels[0:200]
 
 def display_image(images, size):
     n = len(images)
@@ -115,7 +115,7 @@ def full_layer(input, size):
     b = bias_variable([size])
     return tf.matmul(input, W) + b
 
-def test(sess):
+def test(sess, accuracy):
     print ("Starting Test")
     number_of_test_batches = 10
     number_of_samples_per_batch = 20
@@ -129,56 +129,55 @@ def test(sess):
                                                  keep_prob: 1.0})
                    for i in range(number_of_test_batches)])
     print ("Accuracy: {:.4}%".format(acc * 100))
-adience = AdienceDataManager()
-#images = adience.train.next_batch(1)
-#display_image(images, 2)
 
+def train(adience):
+    conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 32])
+    conv1_pool = ConvHelper.max_pool_2x2(conv1)
+    print (conv1_pool)
+    conv2 = ConvHelper.conv_layer(conv1_pool, shape=[5, 5, 32, 16])
+    conv2_pool = ConvHelper.max_pool_2x2(conv2)
+    print (conv2_pool)
+    conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 16, 8])
+    conv3_pool = ConvHelper.max_pool_2x2(conv3)
+    print (conv3_pool)
+    conv3_flat = tf.reshape(conv3_pool, [-1, 13 * 13 * 8])
+    #conv2_flat = tf.reshape(conv2_pool, [-1, 8 * 8 * 64])
+
+    full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
+    full_2 = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
+    #full1_drop = tf.nn.dropout(full_1, keep_prob=keep_prob)
+
+    y_conv = ConvHelper.full_layer(full_2, n_classes)
+
+
+
+    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
+                                                                   labels=y_))
+    loss = tf.reduce_mean(cross_entropy)
+    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
+
+    correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+
+    STEPS = 70
+    MINIBATCH_SIZE = 20
+
+    print "Starting at:" , datetime.datetime.now()
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        print "Initialization done at:" , datetime.datetime.now()
+        for epoch in range(STEPS):
+            print "Starting epoch", epoch, " at:", datetime.datetime.now()
+            for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
+                batch = adience.train.next_batch(MINIBATCH_SIZE)
+                sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
+            if(epoch%1 == 0):
+                test(sess,accuracy)
+
+adience = AdienceDataManager()
 x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
 y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
 keep_prob = tf.placeholder(tf.float32)
-
-conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 32])
-conv1_pool = ConvHelper.max_pool_2x2(conv1)
-print (conv1_pool)
-conv2 = ConvHelper.conv_layer(conv1_pool, shape=[5, 5, 32, 16])
-conv2_pool = ConvHelper.max_pool_2x2(conv2)
-print (conv2_pool)
-conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 16, 8])
-conv3_pool = ConvHelper.max_pool_2x2(conv3)
-print (conv3_pool)
-conv3_flat = tf.reshape(conv3_pool, [-1, 13 * 13 * 8])
-#conv2_flat = tf.reshape(conv2_pool, [-1, 8 * 8 * 64])
-
-full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
-full_2 = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
-#full1_drop = tf.nn.dropout(full_1, keep_prob=keep_prob)
-
-y_conv = ConvHelper.full_layer(full_2, n_classes)
-
-
-
-cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
-                                                               labels=y_))
-loss = tf.reduce_mean(cross_entropy)
-train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
-
-correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
-
-STEPS = 70
-MINIBATCH_SIZE = 20
-
-print "Starting at:" , datetime.datetime.now()
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    print "Initialization done at:" , datetime.datetime.now()
-    for epoch in range(STEPS):
-        print "Starting epoch", epoch, " at:", datetime.datetime.now()
-        for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
-            batch = adience.train.next_batch(MINIBATCH_SIZE)
-            sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
-        if(epoch%1 == 0):
-            test(sess)
-
-    test(sess)
+train(adience)
+#test(sess)
