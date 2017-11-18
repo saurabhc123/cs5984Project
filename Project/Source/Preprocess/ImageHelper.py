@@ -31,8 +31,11 @@ def downsample_all(folderName, outputFolderName, fileExtension = ".jpg"):
         cv2.imwrite(os.path.join(folderName, 'downsampled_' + file), downsampled_image)
 
 #downsample_all('.',output_folder_name)
-folders = get_subfolders('/Users/saur6410/Google Drive/VT/Dissertation/cs5984Project/Project/Datasets/Adience/aligned')
-for folder in folders:
-    print "processing:", folder
-    downsample_all(folder,output_folder_name)
+
+#The following code could be used to downsample images in a list of directories. For a single directory, just call the
+# downsample_all(folder,output_folder_name) method with the foldername parameter.
+#folders = get_subfolders('/Users/saur6410/Google Drive/VT/Dissertation/cs5984Project/Project/Datasets/Adience/aligned')
+#for folder in folders:
+    #print "processing:", folder
+    #downsample_all(folder,output_folder_name)
     #break;
