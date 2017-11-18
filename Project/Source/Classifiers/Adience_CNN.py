@@ -15,13 +15,13 @@ import os as os
 current_working_folder = os.path.dirname(os.getcwd())
 
 metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/')
-train_metadata_filename = 'gender_train.txt'
-test_metadata_filename = 'gender_train.txt'
+train_metadata_filename = 'downsampled_gender_train.txt'
+test_metadata_filename = 'downsampled_gender_train.txt'
 image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/aligned/')
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
-img_dim = 816
+img_dim = 100
 n_channels = 3
 
 class AdienceLoader(object):
@@ -73,7 +73,8 @@ def load_data(inputFilenameWithPath):
         for row in reader:
             data.append(row[0])
             labels.append(int(row[1]))
-    return data[0:200] , labels[0:200]
+    #print(len(data))
+    return data[0:12000] , labels[0:12000]
 
 def display_image(images, size):
     n = len(images)
@@ -115,13 +116,14 @@ def full_layer(input, size):
 
 def test(sess):
     print ("Starting Test")
-    start_index = 10
-    number_of_samples = 10
-    X = adience.test.images.reshape(start_index, start_index + number_of_samples, img_dim, img_dim, n_channels)
-    Y = adience.test.labels.reshape(start_index, start_index + number_of_samples, n_classes)
+    number_of_test_batches = 10
+    number_of_samples_per_batch = len(adience.test.images)/number_of_test_batches
+    #print len(adience.test.images)
+    X = adience.test.images.reshape(number_of_test_batches, number_of_samples_per_batch, img_dim, img_dim, n_channels)
+    Y = adience.test.labels.reshape(number_of_test_batches, number_of_samples_per_batch, n_classes)
     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
                                                  keep_prob: 1.0})
-                   for i in range(start_index)])
+                   for i in range(number_of_test_batches)])
     print ("Accuracy: {:.4}%".format(acc * 100))
 adience = AdienceDataManager()
 #images = adience.train.next_batch(1)
@@ -140,7 +142,7 @@ print (conv2_pool)
 conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 16, 8])
 conv3_pool = ConvHelper.max_pool_2x2(conv3)
 print (conv3_pool)
-conv3_flat = tf.reshape(conv3_pool, [-1, 102 * 102 * 8])
+conv3_flat = tf.reshape(conv3_pool, [-1, 13 * 13 * 8])
 #conv2_flat = tf.reshape(conv2_pool, [-1, 8 * 8 * 64])
 
 full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
@@ -160,7 +162,7 @@ correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 
-STEPS = 10
+STEPS = 70
 MINIBATCH_SIZE = 20
 
 print "Starting at:" , datetime.datetime.now()
