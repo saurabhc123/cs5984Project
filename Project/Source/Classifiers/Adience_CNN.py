@@ -11,6 +11,7 @@ import pickle
 import csv as csv
 import datetime
 import os as os
+import random
 
 current_working_folder = os.path.dirname(os.getcwd())
 
@@ -117,10 +118,13 @@ def full_layer(input, size):
 def test(sess):
     print ("Starting Test")
     number_of_test_batches = 10
-    number_of_samples_per_batch = len(adience.test.images)/number_of_test_batches
+    number_of_samples_per_batch = 20
+    total_samples = number_of_test_batches * number_of_samples_per_batch
+    random_index = random.randint(0,len(adience.test.images) - total_samples)
+
     #print len(adience.test.images)
-    X = adience.test.images.reshape(number_of_test_batches, number_of_samples_per_batch, img_dim, img_dim, n_channels)
-    Y = adience.test.labels.reshape(number_of_test_batches, number_of_samples_per_batch, n_classes)
+    X = adience.test.images[random_index:random_index+total_samples].reshape(number_of_test_batches, number_of_samples_per_batch, img_dim, img_dim, n_channels)
+    Y = adience.test.labels[random_index:random_index+total_samples].reshape(number_of_test_batches, number_of_samples_per_batch, n_classes)
     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
                                                  keep_prob: 1.0})
                    for i in range(number_of_test_batches)])
@@ -171,7 +175,7 @@ with tf.Session() as sess:
     print "Initialization done at:" , datetime.datetime.now()
     for epoch in range(STEPS):
         print "Starting epoch", epoch, " at:", datetime.datetime.now()
-        for batch_count in range(5):
+        for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
             batch = adience.train.next_batch(MINIBATCH_SIZE)
             sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
         if(epoch%1 == 0):
