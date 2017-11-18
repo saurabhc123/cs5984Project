@@ -22,7 +22,7 @@ n_classes = 2
 img_dim = 816
 n_channels = 3
 
-class CifarLoader(object):
+class AdienceLoader(object):
     def __init__(self, source_files, labels):
         self._source = source_files
         self._i = 0
@@ -36,7 +36,7 @@ class CifarLoader(object):
         #im = plt.imread(imgs[0], format='jpeg')
         #plt.imshow(im)
         #plt.show()
-        #display_cifar(images[0:4],2)
+        #display_image(images[0:4],2)
         n = len(images)
         self.images = images.reshape(n, n_channels, img_dim, img_dim).transpose(0, 2, 3, 1)\
                           .astype(float) / 255
@@ -48,13 +48,13 @@ class CifarLoader(object):
         self._i = (self._i + batch_size) % len(self.images)
         return x, y
 
-class CifarDataManager(object):
+class AdienceDataManager(object):
     def __init__(self):
         train_data_image_filenames , train_labels = load_data(metadata_files_path + train_metadata_filename)
         #imgs = [plt.imread(fname)[...,:n_channels] for fname in train_data_image_filenames]
-        self.train = CifarLoader(train_data_image_filenames, train_labels).load()
+        self.train = AdienceLoader(train_data_image_filenames, train_labels).load()
         test_data_image_filenames , test_labels = load_data(metadata_files_path + test_metadata_filename)
-        self.test = CifarLoader(test_data_image_filenames, test_labels).load()
+        self.test = AdienceLoader(test_data_image_filenames, test_labels).load()
 
 
 def one_hot(vec, vals=n_classes):
@@ -73,7 +73,7 @@ def load_data(inputFilenameWithPath):
             labels.append(int(row[1]))
     return data[0:200] , labels[0:200]
 
-def display_cifar(images, size):
+def display_image(images, size):
     n = len(images)
     size = n/2
     plt.figure()
@@ -113,16 +113,16 @@ def full_layer(input, size):
 
 def test(sess):
     print "Starting Test"
-    X = cifar.test.images.reshape(10, 20, img_dim, img_dim, n_channels)
-    Y = cifar.test.labels.reshape(10, 20, n_classes)
+    X = adience.test.images.reshape(10, 20, img_dim, img_dim, n_channels)
+    Y = adience.test.labels.reshape(10, 20, n_classes)
     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
                                                  keep_prob: 1.0})
                    for i in range(10)])
     print "Accuracy: {:.4}%".format(acc * 100)
 
-cifar = CifarDataManager()
-#images = cifar.train.next_batch(1)
-#display_cifar(images, 2)
+adience = AdienceDataManager()
+#images = adience.train.next_batch(1)
+#display_image(images, 2)
 
 x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
 y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
@@ -167,7 +167,7 @@ with tf.Session() as sess:
     for epoch in range(STEPS):
         print "Starting epoch", epoch, " at:", datetime.datetime.now()
         for batch_count in range(5):
-            batch = cifar.train.next_batch(MINIBATCH_SIZE)
+            batch = adience.train.next_batch(MINIBATCH_SIZE)
             sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
         if(epoch%1 == 0):
             test(sess)
