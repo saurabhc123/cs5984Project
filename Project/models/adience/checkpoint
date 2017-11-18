@@ -1,0 +1,2 @@
+model_checkpoint_path: "adience_model.ckpt"
+all_model_checkpoint_paths: "adience_model.ckpt"
