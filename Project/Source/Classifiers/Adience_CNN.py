@@ -19,6 +19,8 @@ metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adi
 train_metadata_filename = 'downsampled_gender_train.txt'
 test_metadata_filename = 'downsampled_gender_train.txt'
 image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/aligned/')
+model_folder_name = "models/adience"
+model_filename = os.path.join(model_folder_name,"adience_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
@@ -130,7 +132,7 @@ def test(sess, accuracy):
                    for i in range(number_of_test_batches)])
     print ("Accuracy: {:.4}%".format(acc * 100))
 
-def train(adience):
+def train(sess, adience, retrain = False):
     conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 32])
     conv1_pool = ConvHelper.max_pool_2x2(conv1)
     print (conv1_pool)
@@ -159,12 +161,19 @@ def train(adience):
     correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+    # Add ops to save and restore all the variables.
+    saver = tf.train.Saver()
 
-    STEPS = 70
+    STEPS = 10
     MINIBATCH_SIZE = 20
 
-    print "Starting at:" , datetime.datetime.now()
-    with tf.Session() as sess:
+    if os.path.exists(model_folder_name) & (not retrain):
+        print("Model found in file: %s" % model_filename)
+        saver.restore(sess, model_filename)
+    else:
+        if (retrain) & os.path.exists(model_folder_name):
+            print ("Retraining the model.")
+        print "Starting at:" , datetime.datetime.now()
         sess.run(tf.global_variables_initializer())
         print "Initialization done at:" , datetime.datetime.now()
         for epoch in range(STEPS):
@@ -174,10 +183,14 @@ def train(adience):
                 sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
             if(epoch%1 == 0):
                 test(sess,accuracy)
+        save_path = saver.save(sess, model_filename)
+        print("Model saved in file: %s" % save_path)
+    return accuracy
 
 adience = AdienceDataManager()
 x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
 y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
 keep_prob = tf.placeholder(tf.float32)
-train(adience)
-#test(sess)
+with tf.Session() as sess:
+    accuracy = train(sess,adience, retrain=False)
+    test(sess,accuracy)
