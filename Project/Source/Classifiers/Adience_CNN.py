@@ -186,12 +186,14 @@ def train(sess, adience, retrain = False):
                 test(sess,accuracy)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return accuracy
+    return accuracy, full_2
 
 adience = AdienceDataManager()
 x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
 y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
 keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
-    accuracy = train(sess,adience, retrain=False)
+    accuracy, fc7 = train(sess, adience, retrain=False)
+    fc7rep = sess.run(fc7, feed_dict= {x : adience.train.next_batch(1)[0]})
+    print fc7rep, fc7rep.shape
     test(sess,accuracy)
