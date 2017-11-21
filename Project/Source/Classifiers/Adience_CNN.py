@@ -151,17 +151,12 @@ def train(sess, adience, retrain = False):
     conv3_pool = ConvHelper.max_pool_2x2(conv3)
     print (conv3_pool)
     conv3_flat = tf.reshape(conv3_pool, [-1, 13 * 13 * 8])
-    #conv2_flat = tf.reshape(conv2_pool, [-1, 8 * 8 * 64])
 
     with tf.variable_scope("FC-7"):
         full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
-        full_2 = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
-    #full1_drop = tf.nn.dropout(full_1, keep_prob=keep_prob)
+        fc7layer = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
 
-    y_conv = ConvHelper.full_layer(full_2, n_classes)
-
-
-
+    y_conv = ConvHelper.full_layer(fc7layer, n_classes)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
                                                                    labels=y_))
     loss = tf.reduce_mean(cross_entropy)
@@ -194,7 +189,7 @@ def train(sess, adience, retrain = False):
                 test(sess,accuracy)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return accuracy, full_2
+    return accuracy, fc7layer
 
 adience = AdienceDataManager()
 x = Placeholders.x
@@ -205,7 +200,6 @@ with tf.Session() as sess:
     accuracy, fc7 = train(sess, adience, retrain=False)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
     print image.shape
-    #fc7rep = sess.run(fc7, feed_dict= {x : image})
     fc7rep = get_fc7_representation(image, sess, fc7)
     print fc7rep, fc7rep.shape
     test(sess,accuracy)

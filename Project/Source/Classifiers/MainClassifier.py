@@ -78,7 +78,6 @@ def train(sess, train, retrain, fc7, adience):
             print "Starting epoch", epoch, " at:", datetime.datetime.now()
             for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
                 batch = adience.train.next_batch(MINIBATCH_SIZE)
-                #fc7_x = map(lambda image: get_fc7_representation(image, sess, fc7), batch[0])
                 fc7_x = get_fc7_representation(batch[0], sess, fc7,x)
                 sess.run(train_step, feed_dict={x_main: fc7_x, y_: batch[1],keep_prob: 1.0})
             if(epoch%1 == 0):

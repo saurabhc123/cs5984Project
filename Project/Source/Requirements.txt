@@ -1,3 +1,4 @@
 pathlib
 tensorflow
 numpy
+gensim
