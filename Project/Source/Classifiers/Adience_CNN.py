@@ -12,6 +12,8 @@ import csv as csv
 import datetime
 import os as os
 import random
+import MainClassifier
+import Placeholders
 
 current_working_folder = os.path.dirname(os.getcwd())
 
@@ -132,6 +134,12 @@ def test(sess, accuracy):
                    for i in range(number_of_test_batches)])
     print ("Accuracy: {:.4}%".format(acc * 100))
 
+def get_fc7_representation(sample, sess, fc7):
+    image = np.array(sample).reshape((1,img_dim,img_dim,n_channels))
+    print image.shape
+    fc7rep = sess.run(fc7, feed_dict= {x : image})
+    return fc7rep
+
 def train(sess, adience, retrain = False):
     conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 32])
     conv1_pool = ConvHelper.max_pool_2x2(conv1)
@@ -189,11 +197,18 @@ def train(sess, adience, retrain = False):
     return accuracy, full_2
 
 adience = AdienceDataManager()
-x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
-y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
+x = Placeholders.x
+y_ = Placeholders.y_
+
 keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
     accuracy, fc7 = train(sess, adience, retrain=False)
-    fc7rep = sess.run(fc7, feed_dict= {x : adience.train.next_batch(1)[0]})
+    image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
+    print image.shape
+    #fc7rep = sess.run(fc7, feed_dict= {x : image})
+    fc7rep = get_fc7_representation(image, sess, fc7)
     print fc7rep, fc7rep.shape
     test(sess,accuracy)
+    with tf.variable_scope("main_classifier"):
+        MainClassifier.train(sess,None, True, fc7, adience)
+

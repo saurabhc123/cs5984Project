@@ -168,7 +168,7 @@ MINIBATCH_SIZE = 14
 with tf.device('/gpu:0'):
     print ("Starting")
     with tf.Session() as sess:
-
+        
         sess.run(tf.global_variables_initializer())
         print(sess.run(c))
         print ("Initialization done", str(datetime.datetime.now()))
