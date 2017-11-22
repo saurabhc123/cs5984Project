@@ -4,7 +4,7 @@ import csv
 from collections import OrderedDict
 import json
 
-parent_dir  = str(Path().resolve().parent.parent)
+parent_dir = str(Path().resolve().parent.parent)
 inp_file_name = 'gender-classifier-DFE-791531.csv'
 source_path = os.path.join(parent_dir, 'Datasets', 'Kaggle', inp_file_name)
 # Reading a csv file
