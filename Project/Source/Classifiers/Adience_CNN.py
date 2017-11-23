@@ -204,5 +204,5 @@ with tf.Session() as sess:
     print fc7rep, fc7rep.shape
     test(sess,accuracy)
     with tf.variable_scope("main_classifier"):
-        MainClassifier.train(sess,None, True, fc7, adience)
+        MainClassifier.train(sess,None, True, fc7)
 

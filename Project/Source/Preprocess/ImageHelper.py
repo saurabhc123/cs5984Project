@@ -42,4 +42,4 @@ def downsample_all(folderName, outputFolderName, fileExtension = ".jpg"):
 #     break;
 
 folder = '/Users/saur6410/Google Drive/VT/Dissertation/cs5984Project/Project/Datasets/Kaggle/Images'
-downsample_all(folder,output_folder_name, fileExtension = ".png")
+downsample_all(folder,output_folder_name, fileExtension = ".gif")

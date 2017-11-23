@@ -22,8 +22,12 @@ test_metadata_filename = 'KaggleTwitter.csv'
 
 
 class KaggleDataManager(object):
+    def __init__(self):
+        self.__init__(kaggle_files_path + train_metadata_filename)
+
     def __init__(self, trainingDataFileName):
-        data = []
+        self._i = 0
+        self.data = []
         with open(trainingDataFileName, 'rt') as csvfile:
             has_header = csv.Sniffer().has_header(csvfile.read(25))
             csvfile.seek(0)  # rewind
@@ -32,12 +36,29 @@ class KaggleDataManager(object):
                 next(reader)  # skip header row
             #reader = csv.reader(csvfile, delimiter=',')
             for row in reader:
-                data.append(KaggleSample(row))
-                if(len(data) == 5):
+                self.data.append(KaggleSample(row))
+                if(len(self.data) == 600):
                     break
-        print(len(data))
-        self.train = data
-        self.test = data
+        print(len(self.data))
+        self.train = self.get_clean_kaggle_dataset()
+        self.test = self.train
+
+    def get_clean_kaggle_dataset(self):
+        goodData = []
+        for sample in self.data:
+            try:
+                img_data = sample.get_image_data()
+                goodData.append(sample)
+            except:
+                print("Omitting:", sample.name)
+        return goodData
+
+    def next_batch(self, batch_size):
+        batch_data = self.train[self._i:self._i+batch_size]
+        self._i = (self._i + batch_size) % len(self.train)
+        return batch_data
+
+
 
 
 
@@ -45,7 +66,7 @@ class KaggleDataManager(object):
 
 class KaggleSample(object):
     def __init__(self, rowData):
-        self.label = 0.0 if rowData[0] == 'male' else 1.0
+        self.label = 0 if rowData[0] == 'male' else 1
         self.profile_description = rowData[2]
         self.link_color = rowData[3]
         self.name = rowData[4]
@@ -63,8 +84,12 @@ class KaggleSample(object):
 
 
 
-kdm = KaggleDataManager(kaggle_files_path + train_metadata_filename)
-len(kdm.test)
-img = kdm.test[0].get_image_data()
+
+
+
+#process_kaggle_dataset()
+# kdm = KaggleDataManager(kaggle_files_path + train_metadata_filename)
+# len(kdm.test)
+# img = kdm.test[0].get_image_data()
 
 

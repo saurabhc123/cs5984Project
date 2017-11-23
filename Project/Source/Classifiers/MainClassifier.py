@@ -13,6 +13,7 @@ import datetime
 import os as os
 import random
 import Placeholders
+import KaggleDataManager
 
 model_folder_name = "models/adience"
 model_filename = os.path.join(model_folder_name,"main_model.ckpt")
@@ -23,6 +24,12 @@ feature_width = 512
 img_dim = 100
 n_channels = 3
 
+#Kaggle data
+current_working_folder = os.path.dirname(os.getcwd())
+kaggle_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/')
+kaggle_images_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/Images')
+train_metadata_filename = 'KaggleTwitter.csv'
+test_metadata_filename = 'KaggleTwitter.csv'
 
 
 x_main = tf.placeholder(tf.float32, shape=[None, feature_width])
@@ -31,7 +38,6 @@ keep_prob = tf.placeholder(tf.float32)
 
 def get_fc7_representation(sample, sess, fc7, x):
     image = np.array(sample).reshape((-1,img_dim,img_dim,n_channels))
-    #print image.shape
     fc7rep = sess.run(fc7, feed_dict= {x : image})
     return fc7rep
 
@@ -40,8 +46,10 @@ x = Placeholders.x
 y_ = Placeholders.y_
 
 
-def train(sess, train, retrain, fc7, adience):
 
+def train(sess, train, retrain, fc7):
+
+    kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename)
     fully_connected = tf.nn.elu(ConvHelper.full_layer(x_main , 512))
     y_conv = ConvHelper.full_layer(fully_connected, n_classes)
 
@@ -56,8 +64,8 @@ def train(sess, train, retrain, fc7, adience):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 10
-    MINIBATCH_SIZE = 20
+    STEPS = 100
+    MINIBATCH_SIZE = 50
 
     #Retrieve training data
 
@@ -74,8 +82,8 @@ def train(sess, train, retrain, fc7, adience):
         print "Initialization done at:" , datetime.datetime.now()
         for epoch in range(STEPS):
             print "Starting epoch", epoch, " at:", datetime.datetime.now()
-            for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
-                batch = adience.train.next_batch(MINIBATCH_SIZE)
+            for batch_count in range(len(kdm.train)/MINIBATCH_SIZE):
+                batch = get_features_and_labels(kdm.next_batch(MINIBATCH_SIZE))
                 fc7_x = get_fc7_representation(batch[0], sess, fc7,x)
                 sess.run(train_step, feed_dict={x_main: fc7_x, y_: batch[1],keep_prob: 1.0})
             if(epoch%1 == 0):
@@ -86,4 +94,21 @@ def train(sess, train, retrain, fc7, adience):
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
     return accuracy
+
+def get_features_and_labels(batch_data):
+    labels = np.array(map(lambda x: x.label , batch_data))
+    images = np.array(map(lambda x: x.get_image_data() , batch_data))
+    #print(labels.shape , images.shape)
+    labels = one_hot(np.hstack([d for d in labels]), n_classes)
+    #print(labels.shape , images.shape)
+    return images, labels
+
+def one_hot(vec, vals=n_classes):
+    n = len(vec)
+    out = np.zeros((n, vals))
+    out[range(n), vec] = 1
+    return out
+
+
+
 
