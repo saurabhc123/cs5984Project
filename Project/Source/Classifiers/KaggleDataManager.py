@@ -7,18 +7,19 @@ import matplotlib.pyplot as plt
 #from skimage.transform import resize
 import scipy as sc
 import ConvHelper
-import pickle
+import jsonpickle
 import csv as csv
 import datetime
 import os as os
 import random
 import Placeholders
+import copyreg
 
 current_working_folder = os.path.dirname(os.getcwd())
 kaggle_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/')
 kaggle_images_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/Images')
 train_metadata_filename = 'KaggleTwitter.csv'
-serialized_train_metadata_filename = 'KaggleTwitter.pkl'
+serialized_train_metadata_filename = 'KaggleTwitter.json'
 test_metadata_filename = 'KaggleTwitter.csv'
 
 
@@ -29,9 +30,11 @@ class KaggleDataManager(object):
     def __init__(self, trainingDataFileName):
         self._i = 0
         self.data = []
-        #self.read_data_from_csv(trainingDataFileName)
-        #clean_data = self.get_clean_kaggle_dataset()
-        #self.serialize_data(clean_data)
+        self.read_data_from_csv(trainingDataFileName)
+        clean_data = self.get_clean_kaggle_dataset()
+        #e_d = jsonpickle.encode(clean_data)
+        #d_d = jsonpickle.decode(e_d)
+        self.serialize_data(clean_data)
         self.train = self.deserialize_data()
         print(str(len(self.train)) + " total input examples.")
         self.test = self.train
@@ -52,14 +55,16 @@ class KaggleDataManager(object):
 
     def serialize_data(self,data):
         filename_to_serialize_into = os.path.join(kaggle_files_path,serialized_train_metadata_filename)
-        with open(filename_to_serialize_into, 'wb') as file:
-            pickle.dump(data, file)
+        with open(filename_to_serialize_into, 'wt') as file:
+            encoded_data = jsonpickle.encode(data)
+            file.write(encoded_data)
 
     def deserialize_data(self):
         filename_to_serialize_into = os.path.join(kaggle_files_path,serialized_train_metadata_filename)
         with open(filename_to_serialize_into, 'rt') as file:
-            data = pickle.load(file)
-        return data
+            file_data = file.read()
+            decoded_data = jsonpickle.decode(file_data)
+        return decoded_data
 
     def get_clean_kaggle_dataset(self):
         goodData = []
