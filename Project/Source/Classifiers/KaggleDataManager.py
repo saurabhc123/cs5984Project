@@ -67,7 +67,7 @@ class KaggleDataManager(object):
 class KaggleSample(object):
     def __init__(self, rowData):
         self.label = 0 if rowData[0] == 'male' else 1
-        self.profile_description = rowData[2]
+        self.description = rowData[2]
         self.link_color = rowData[3]
         self.name = rowData[4]
         self.profile_image = rowData[5]

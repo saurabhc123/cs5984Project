@@ -22,7 +22,7 @@ model_filename = os.path.join(model_folder_name,"main_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
-word_vec_length = 0#300
+word_vec_length = 600#300
 profile_color_feature_length = 6
 feature_width = 512 + word_vec_length + profile_color_feature_length
 img_dim = 100
@@ -116,11 +116,13 @@ def get_features_and_labels(batch_data, sess, fc7, word_vec):
 def get_feature_from_sample(x, sess, fc7, word_vec):
     features = np.array([]).reshape((1,0))
     fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
-    features = np.hstack((features,fc7_x))
+    desc_word_vector = word_vec.get_sentence_vector(x.description)
+    tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
     sidebar_feature = hex_to_rgb(x.sidebar_color)
     link_color_feature = hex_to_rgb(x.link_color)
-    #word_vector = word_vec.get_sentence_vector(x.tweet_text)
-    #features = np.hstack((features,word_vector)).reshape(-1, feature_width)
+    features = np.hstack((features,fc7_x))
+    features = np.hstack((features,desc_word_vector))
+    features = np.hstack((features,tweet_word_vector))
     features = np.hstack((features,sidebar_feature))
     features = np.hstack((features,link_color_feature))
     features = features.reshape(-1, feature_width)
