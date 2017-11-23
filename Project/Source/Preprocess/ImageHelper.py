@@ -24,18 +24,22 @@ def get_subfolders(folderName):
 
 def downsample_all(folderName, outputFolderName, fileExtension = ".jpg"):
     filenames = get_filenames(folderName, fileExtension)
-    if not os.path.exists(outputFolderName):
-        os.mkdir(outputFolderName)
     for file in filenames:
-        downsampled_image = downsample(folderName, file)
-        cv2.imwrite(os.path.join(folderName, 'downsampled_' + file), downsampled_image)
+        try:
+            downsampled_image = downsample(folderName, file)
+            cv2.imwrite(os.path.join(folderName, 'downsampled_' + file), downsampled_image)
+        except:
+            print("Error with file:",file)
 
 #downsample_all('.',output_folder_name)
 
 #The following code could be used to downsample images in a list of directories. For a single directory, just call the
 # downsample_all(folder,output_folder_name) method with the foldername parameter.
-#folders = get_subfolders('/Users/saur6410/Google Drive/VT/Dissertation/cs5984Project/Project/Datasets/Adience/aligned')
-#for folder in folders:
-    #print "processing:", folder
-    #downsample_all(folder,output_folder_name)
-    #break;
+# folders = get_subfolders('/Users/saur6410/Google Drive/VT/Dissertation/cs5984Project/Project/Datasets/Kaggle/Images')
+# for folder in folders:
+#     print "processing:", folder
+#     downsample_all(folder,output_folder_name)
+#     break;
+
+folder = '/Users/saur6410/Google Drive/VT/Dissertation/cs5984Project/Project/Datasets/Kaggle/Images'
+downsample_all(folder,output_folder_name, fileExtension = ".png")
