@@ -25,9 +25,7 @@ n_channels = 3
 
 
 
-#x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
 x_main = tf.placeholder(tf.float32, shape=[None, feature_width])
-#y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
 keep_prob = tf.placeholder(tf.float32)
 
 
