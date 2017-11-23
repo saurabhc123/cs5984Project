@@ -4,7 +4,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage.transform import resize
+#from skimage.transform import resize
 import scipy as sc
 import ConvHelper
 import pickle
@@ -83,12 +83,12 @@ def train(sess, train, retrain, fc7):
     else:
         if (retrain) & os.path.exists(model_folder_name):
             print ("Retraining the model.")
-        print "Starting at:" , datetime.datetime.now()
+        print ("Starting at:" , datetime.datetime.now())
         sess.run(tf.global_variables_initializer())
-        print "Initialization done at:" , datetime.datetime.now()
+        print ("Initialization done at:" , datetime.datetime.now())
         for epoch in range(STEPS):
-            print "Starting epoch", epoch, " at:", datetime.datetime.now()
-            for batch_count in range(len(kdm.train)/MINIBATCH_SIZE):
+            print ("Starting epoch", epoch, " at:", datetime.datetime.now())
+            for batch_count in range(int(len(kdm.train)/MINIBATCH_SIZE)):
                 batch = get_features_and_labels(kdm.next_batch(MINIBATCH_SIZE), sess, fc7, word_vec)
                 batch_x = batch[0].reshape(MINIBATCH_SIZE, feature_width)
                 sess.run(train_step, feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 1.0})

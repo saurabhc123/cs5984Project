@@ -4,7 +4,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage.transform import resize
+#from skimage.transform import resize
 import scipy as sc
 import ConvHelper
 import pickle
@@ -73,7 +73,7 @@ def one_hot(vec, vals=n_classes):
 def load_data(inputFilenameWithPath):
     data = []
     labels = []
-    with open(inputFilenameWithPath, 'rb') as csvfile:
+    with open(inputFilenameWithPath, 'rt') as csvfile:
         reader = csv.reader(csvfile, delimiter=' ')
         for row in reader:
             data.append(row[0])
@@ -136,7 +136,7 @@ def test(sess, accuracy):
 
 def get_fc7_representation(sample, sess, fc7):
     image = np.array(sample).reshape((1,img_dim,img_dim,n_channels))
-    print image.shape
+    print (image.shape)
     fc7rep = sess.run(fc7, feed_dict= {x : image})
     return fc7rep
 
@@ -177,11 +177,11 @@ def train(sess, adience, retrain = False):
     else:
         if (retrain) & os.path.exists(model_folder_name):
             print ("Retraining the model.")
-        print "Starting at:" , datetime.datetime.now()
+        print ("Starting at:" , datetime.datetime.now())
         sess.run(tf.global_variables_initializer())
-        print "Initialization done at:" , datetime.datetime.now()
+        print ("Initialization done at:" , datetime.datetime.now())
         for epoch in range(STEPS):
-            print "Starting epoch", epoch, " at:", datetime.datetime.now()
+            print ("Starting epoch", epoch, " at:", datetime.datetime.now())
             for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
                 batch = adience.train.next_batch(MINIBATCH_SIZE)
                 sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
@@ -199,9 +199,9 @@ keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
     accuracy, fc7 = train(sess, adience, retrain=False)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
-    print image.shape
+    print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
-    print fc7rep, fc7rep.shape
+    print (fc7rep, fc7rep.shape)
     test(sess,accuracy)
     with tf.variable_scope("main_classifier"):
         MainClassifier.train(sess,None, True, fc7)

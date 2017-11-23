@@ -5,6 +5,8 @@ __pycache__/
 
 Project/models/adience
 Project/Datasets/Kaggle/*.gz
+Project/models/adience/adience_model.*
+
 
 # C extensions
 *.so

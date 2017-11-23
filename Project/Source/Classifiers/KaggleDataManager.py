@@ -4,7 +4,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage.transform import resize
+#from skimage.transform import resize
 import scipy as sc
 import ConvHelper
 import pickle
@@ -18,6 +18,7 @@ current_working_folder = os.path.dirname(os.getcwd())
 kaggle_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/')
 kaggle_images_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/Images')
 train_metadata_filename = 'KaggleTwitter.csv'
+serialized_train_metadata_filename = 'KaggleTwitter.pkl'
 test_metadata_filename = 'KaggleTwitter.csv'
 
 
@@ -28,20 +29,37 @@ class KaggleDataManager(object):
     def __init__(self, trainingDataFileName):
         self._i = 0
         self.data = []
+        #self.read_data_from_csv(trainingDataFileName)
+        #clean_data = self.get_clean_kaggle_dataset()
+        #self.serialize_data(clean_data)
+        self.train = self.deserialize_data()
+        print(str(len(self.train)) + " total input examples.")
+        self.test = self.train
+
+    def read_data_from_csv(self, trainingDataFileName):
         with open(trainingDataFileName, 'rt') as csvfile:
-            has_header = csv.Sniffer().has_header(csvfile.read(25))
-            csvfile.seek(0)  # rewind
+            # has_header = csv.Sniffer().has_header(csvfile.read(25))
+            # csvfile.seek(0)  # rewind
             reader = csv.reader(csvfile, delimiter=',')
-            if has_header:
-                next(reader)  # skip header row
-            #reader = csv.reader(csvfile, delimiter=',')
+            # if has_header:
+            next(reader)  # skip header row
+            # reader = csv.reader(csvfile, delimiter=',')
             for row in reader:
                 self.data.append(KaggleSample(row))
-                if(len(self.data) == 600):
-                    break
+                #if (len(self.data) == 600):
+                    #break
         print(len(self.data))
-        self.train = self.get_clean_kaggle_dataset()
-        self.test = self.train
+
+    def serialize_data(self,data):
+        filename_to_serialize_into = os.path.join(kaggle_files_path,serialized_train_metadata_filename)
+        with open(filename_to_serialize_into, 'wb') as file:
+            pickle.dump(data, file)
+
+    def deserialize_data(self):
+        filename_to_serialize_into = os.path.join(kaggle_files_path,serialized_train_metadata_filename)
+        with open(filename_to_serialize_into, 'rt') as file:
+            data = pickle.load(file)
+        return data
 
     def get_clean_kaggle_dataset(self):
         goodData = []
@@ -88,8 +106,8 @@ class KaggleSample(object):
 
 
 #process_kaggle_dataset()
-# kdm = KaggleDataManager(kaggle_files_path + train_metadata_filename)
-# len(kdm.test)
+kdm = KaggleDataManager(kaggle_files_path + train_metadata_filename)
+len(kdm.test)
 # img = kdm.test[0].get_image_data()
 
 
