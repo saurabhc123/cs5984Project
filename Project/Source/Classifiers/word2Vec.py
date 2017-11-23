@@ -2,7 +2,7 @@ import gensim
 import numpy as np
 
 
-pretrained_word_vector_binary = '/Users/saur6410/Google Drive/VT/Old/Thesis/Source/ThesisPython/data/GoogleNews-vectors-negative300.bin'
+pretrained_word_vector_binary = "c:\\temp\GoogleNews-vectors-negative300.bin"
 
 
 
@@ -67,7 +67,11 @@ class word2vec:
         featureVec = np.zeros((1,300))
         nwords = 0
         model = self.get_model()
-        words = sentence.rstrip().split(" ")
+        try:
+            words = sentence.rstrip().split(" ")
+        except:
+            print("Sentence is a dict.")#Dictionary
+            return featureVec
         if(len(words) == 0):
             return featureVec
         for word in words:

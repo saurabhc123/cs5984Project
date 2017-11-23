@@ -182,7 +182,7 @@ def train(sess, adience, retrain = False):
         print ("Initialization done at:" , datetime.datetime.now())
         for epoch in range(STEPS):
             print ("Starting epoch", epoch, " at:", datetime.datetime.now())
-            for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
+            for batch_count in range(int(len(adience.train.images)/MINIBATCH_SIZE)):
                 batch = adience.train.next_batch(MINIBATCH_SIZE)
                 sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
             if(epoch%1 == 0):

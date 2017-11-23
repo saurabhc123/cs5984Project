@@ -104,22 +104,42 @@ def train(sess, train, retrain, fc7):
 
 
 def get_features_and_labels(batch_data, sess, fc7, word_vec):
-    labels = np.array(map(lambda x: x.label , batch_data))
-    features = np.array(map(lambda x: get_feature_from_sample(x, sess, fc7, word_vec), batch_data))
+    #processed_batch_data = map(lambda x: convert_to_sample(x) , batch_data)
+    # labels = np.array(map(lambda x: x.label, processed_batch_data))
+    # features = np.array(map(lambda x: get_feature_from_sample(x, sess, fc7, word_vec), processed_batch_data))
+    processed_batch_data = get_samples(batch_data)
+    labels = get_labels(processed_batch_data)
+    features = np.array(get_features(processed_batch_data, sess, fc7, word_vec))
     #print(labels.shape , images.shape)
     labels = one_hot(np.hstack([d for d in labels]), n_classes)
     #print(features.shape , labels.shape)
     return features, labels
 
+def get_labels(samples):
+    return [[sample.label] for sample in samples]
+
+def get_features(samples, sess, fc7, word_vec):
+    return [[get_feature_from_sample(sample, sess, fc7, word_vec)] for sample in samples]
+
+def convert_to_sample(x_dict):
+    sample = KaggleDataManager.KaggleSample(None)
+    sample.set(x_dict)
+    return sample
+
+def get_samples(data):
+    returnData = []
+    for dict in data:
+        returnData.append(convert_to_sample(dict))
+    return returnData
 
 
-def get_feature_from_sample(x, sess, fc7, word_vec):
+def get_feature_from_sample(sample, sess, fc7, word_vec):
     features = np.array([]).reshape((1,0))
-    fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
-    desc_word_vector = word_vec.get_sentence_vector(x.description)
-    tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
-    sidebar_feature = hex_to_rgb(x.sidebar_color)
-    link_color_feature = hex_to_rgb(x.link_color)
+    fc7_x = get_fc7_representation(sample.get_image_data(), sess, fc7)
+    desc_word_vector = word_vec.get_sentence_vector(sample.description)
+    tweet_word_vector = word_vec.get_sentence_vector(sample.tweet_text)
+    sidebar_feature = hex_to_rgb(sample.sidebar_color)
+    link_color_feature = hex_to_rgb(sample.link_color)
     features = np.hstack((features,fc7_x))
     features = np.hstack((features,desc_word_vector))
     features = np.hstack((features,tweet_word_vector))
