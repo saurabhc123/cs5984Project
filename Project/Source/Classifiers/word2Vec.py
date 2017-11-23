@@ -42,7 +42,7 @@ class word2vec:
         lineContent = line.split(',')
         return (lineContent[1] if len(lineContent) > 1 else lineContent[0])
 
-    def avg_feature_vector(self, words, model, num_features, index2word_set):
+    def avg_feature_vector(self, words, model, num_features , index2word_set):
         # function to average all words vectors in a given paragraph
         featureVec = np.zeros((num_features,), dtype="float32")
         nwords = 0
@@ -62,6 +62,25 @@ class word2vec:
     def get_word_vector(self, word):
         model = self.get_model()
         return model[word]
+
+    def get_sentence_vector(self, sentence):
+        featureVec = np.zeros((1,300))
+        nwords = 0
+        model = self.get_model()
+        words = sentence.rstrip().split(" ")
+        if(len(words) == 0):
+            return featureVec
+        for word in words:
+            try:
+                word_vector = model[word]
+                nwords += 1
+                #print word_vector
+                featureVec = np.add(featureVec, word_vector)
+            except:
+                pass #Swallow exception
+        if (nwords > 0):
+            featureVec = np.divide(featureVec, nwords)
+        return featureVec
 
     def read_from_file(self, name, model):
         with open(name,"r") as f:

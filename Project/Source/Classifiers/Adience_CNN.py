@@ -141,16 +141,16 @@ def get_fc7_representation(sample, sess, fc7):
     return fc7rep
 
 def train(sess, adience, retrain = False):
-    conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 32])
+    conv1 = ConvHelper.conv_layer(x, shape=[7, 7, 3, 96], strides = [1, 2, 2, 1])
     conv1_pool = ConvHelper.max_pool_2x2(conv1)
     print (conv1_pool)
-    conv2 = ConvHelper.conv_layer(conv1_pool, shape=[5, 5, 32, 16])
+    conv2 = ConvHelper.conv_layer(conv1_pool, shape=[5, 5, 96, 256])
     conv2_pool = ConvHelper.max_pool_2x2(conv2)
     print (conv2_pool)
-    conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 16, 8])
+    conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 256, 384])
     conv3_pool = ConvHelper.max_pool_2x2(conv3)
     print (conv3_pool)
-    conv3_flat = tf.reshape(conv3_pool, [-1, 13 * 13 * 8])
+    conv3_flat = tf.reshape(conv3_pool, [-1, 7 * 7 * 384])
 
     with tf.variable_scope("FC-7"):
         full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
