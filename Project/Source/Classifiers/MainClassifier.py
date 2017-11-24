@@ -49,7 +49,7 @@ def get_fc7_representation(sample, sess, fc7):
 x = Placeholders.x
 y_ = Placeholders.y_
 
-def test(sess, accuracy, test,fc7, word_vec):
+def test(sess, accuracy, test,fc7, word_vec, datasetType = "Test "):
     print ("Starting Test")
     number_of_test_batches = 5
     number_of_samples_per_batch = 10
@@ -63,7 +63,7 @@ def test(sess, accuracy, test,fc7, word_vec):
 
     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1],
                                      keep_prob: 1.0})
-    print ("Accuracy: {:.4}%".format(acc * 100))
+    print (datasetType + "Accuracy: {:.4}%".format(acc * 100))
 
 def test1(sess, accuracy, test,fc7, word_vec):
     print ("Starting Test")
@@ -79,7 +79,7 @@ def train(sess, train, retrain, fc7):
     kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename)
     word_vec = w2v.word2vec()
 
-    fully_connected = tf.nn.elu(ConvHelper.full_layer(x_main , 512))
+    fully_connected = tf.nn.sigmoid(ConvHelper.full_layer(x_main , feature_width))
     y_conv = ConvHelper.full_layer(fully_connected, n_classes)
 
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
@@ -118,6 +118,10 @@ def train(sess, train, retrain, fc7):
             if(epoch%10 == 0):
                 #acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
                 #print ("Accuracy: {:.4}%".format(acc * 100))
+                mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1]})
+                print("Iter " + str(epoch) + ", Minibatch Loss= " + \
+                      "{:.6f}".format(mse))
+                test(sess, accuracy, kdm.train, fc7, word_vec, datasetType="Train")
                 test(sess, accuracy, kdm.test, fc7, word_vec)
         test(sess, accuracy, kdm.test, fc7, word_vec)
         save_path = saver.save(sess, model_filename)

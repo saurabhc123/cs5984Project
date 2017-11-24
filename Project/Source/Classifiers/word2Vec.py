@@ -2,6 +2,7 @@ import gensim
 import numpy as np
 import string
 
+
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 
@@ -106,7 +107,7 @@ class word2vec:
 
 
     def clean_sent(self, lem, sent):
-        sent = unicode(sent,errors='ignore')
+        #sent = unicode(sent,errors='ignore')
         words = sent.replace(","," ").replace(";", " ").replace("#"," ").replace(":", " ").replace("@", " ").split()
         filtered_words = filter(lambda word: word.isalpha() and len(word) > 1 and word != "http" and word != "rt", [self.full_pipeline(lem, word) for word in words])
         return ' '.join(self.filter_stopwords(filtered_words))
@@ -122,6 +123,7 @@ if __name__ == "__main__":
     sentence = "Gala Bingo clubs bought for 241m: The UK's largest High Street bingo operator, Gala, is being taken over by_ https://t.co/HzeeykJUd3"
     wv = word2vec()
     clean_sentence = wv.clean_sent(wv.wordnet_lemmatizer,sentence)
+    print(clean_sentence)
 
     model = word2vec().get_model()
     # you can find the terms that are similar to a list of words and different from
