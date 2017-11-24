@@ -14,11 +14,12 @@ import os as os
 import random
 import Placeholders
 import copyreg
+from sklearn.model_selection import train_test_split
 
 current_working_folder = os.path.dirname(os.getcwd())
 kaggle_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/')
 kaggle_images_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/Images')
-train_metadata_filename = 'KaggleTwitter.csv'
+train_metadata_filename = 'Kaggle-str-process.csv'
 serialized_train_metadata_filename = 'KaggleTwitter.json'
 test_metadata_filename = 'KaggleTwitter.csv'
 
@@ -31,13 +32,13 @@ class KaggleDataManager(object):
         self._i = 0
         self.data = []
         self.read_data_from_csv(trainingDataFileName)
-        clean_data = self.get_clean_kaggle_dataset()
+        clean_data = train_test_split(self.get_clean_kaggle_dataset(), test_size = 0.3, random_state = 42)
         #e_d = jsonpickle.encode(clean_data)
         #d_d = jsonpickle.decode(e_d)
-        self.serialize_data(clean_data)
-        self.train = self.deserialize_data()
-        print(str(len(self.train)) + " total input examples.")
-        self.test = self.train
+        #self.serialize_data(clean_data)
+        self.train = clean_data[0]
+        print(str(len(self.train)) + " total input training examples.")
+        self.test = clean_data[1] #self.train
 
     def read_data_from_csv(self, trainingDataFileName):
         with open(trainingDataFileName, 'rt') as csvfile:
@@ -82,11 +83,6 @@ class KaggleDataManager(object):
         return batch_data
 
 
-
-
-
-
-
 class KaggleSample(object):
     def __init__(self, rowData):
         self.label = 0 if rowData[0] == 'male' else 1
@@ -111,8 +107,8 @@ class KaggleSample(object):
 
 
 #process_kaggle_dataset()
-kdm = KaggleDataManager(kaggle_files_path + train_metadata_filename)
-len(kdm.test)
+#kdm = KaggleDataManager(kaggle_files_path + train_metadata_filename)
+#len(kdm.test)
 # img = kdm.test[0].get_image_data()
 
 

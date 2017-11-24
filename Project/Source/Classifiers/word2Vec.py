@@ -1,19 +1,25 @@
 import gensim
 import numpy as np
+import string
+
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
 
 
-pretrained_word_vector_binary = '/Users/saur6410/Google Drive/VT/Old/Thesis/Source/ThesisPython/data/GoogleNews-vectors-negative300.bin'
+
+
+pretrained_word_vector_binary = 'c:\\temp\\GoogleNews-vectors-negative300.bin'
 
 
 
-def write_to_file(lv,file):
-    with open(file,"w") as f:
-        for l,v in lv:
-            f.write(str(l) + "," + ','.join((str(x)for x in np.nditer(v))) + "\n")
+
+
 
 class word2vec:
     model = None
     models = {}
+    stop = set(stopwords.words('english'))
+    wordnet_lemmatizer = WordNetLemmatizer()
 
     def get_model(self):
         if not self.model:
@@ -66,8 +72,9 @@ class word2vec:
     def get_sentence_vector(self, sentence):
         featureVec = np.zeros((1,300))
         nwords = 0
+        clean_sentence = self.clean_sent(self.wordnet_lemmatizer, sentence)
         model = self.get_model()
-        words = sentence.rstrip().split(" ")
+        words = clean_sentence.rstrip().split(" ")
         if(len(words) == 0):
             return featureVec
         for word in words:
@@ -90,8 +97,32 @@ class word2vec:
             vecs = map(lambda t: self.avg_feature_vector(t, model, 300, model.index2word),tweets_only)
             return zip(lables_only,vecs)
 
+    def full_pipeline(self, lem, word):
+        word = word.lower()
+        word = word.translate(string.punctuation)
+        for val in ['a', 'v', 'n']:
+            word = lem.lemmatize(word, pos=val)
+        return word
+
+
+    def clean_sent(self, lem, sent):
+        sent = unicode(sent,errors='ignore')
+        words = sent.replace(","," ").replace(";", " ").replace("#"," ").replace(":", " ").replace("@", " ").split()
+        filtered_words = filter(lambda word: word.isalpha() and len(word) > 1 and word != "http" and word != "rt", [self.full_pipeline(lem, word) for word in words])
+        return ' '.join(self.filter_stopwords(filtered_words))
+
+    def filter_stopwords(self, words):
+        return filter(lambda word: word not in self.stop, words)
+
+
+
+
 
 if __name__ == "__main__":
+    sentence = "Gala Bingo clubs bought for 241m: The UK's largest High Street bingo operator, Gala, is being taken over by_ https://t.co/HzeeykJUd3"
+    wv = word2vec()
+    clean_sentence = wv.clean_sent(wv.wordnet_lemmatizer,sentence)
+
     model = word2vec().get_model()
     # you can find the terms that are similar to a list of words and different from
     # another list of words like so

@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 #from skimage.transform import resize
 import scipy as sc
+from sklearn.model_selection import train_test_split
 import ConvHelper
 import pickle
 import csv as csv
@@ -59,9 +60,12 @@ class AdienceDataManager(object):
     def __init__(self):
         train_data_image_filenames , train_labels = load_data(metadata_files_path + train_metadata_filename)
         #imgs = [plt.imread(fname)[...,:n_channels] for fname in train_data_image_filenames]
-        self.train = AdienceLoader(train_data_image_filenames, train_labels).load()
-        test_data_image_filenames , test_labels = load_data(metadata_files_path + test_metadata_filename)
-        self.test = AdienceLoader(test_data_image_filenames, test_labels).load()
+        train_d, test_d, train_labels, test_labels = train_test_split(train_data_image_filenames, train_labels, test_size=0.3, random_state=42 )
+        self.train = AdienceLoader(train_d, train_labels).load()
+        print("Training data size:" + str(len(train_labels)))
+        #test_data_image_filenames , test_labels = load_data(metadata_files_path + test_metadata_filename)
+        self.test = AdienceLoader(test_d, test_labels).load()
+        print("Test data size:" + str(len(test_labels)))
 
 
 def one_hot(vec, vals=n_classes):
@@ -79,7 +83,7 @@ def load_data(inputFilenameWithPath):
             data.append(row[0])
             labels.append(int(row[1]))
     #print(len(data))
-    return data[0:200] , labels[0:200]
+    return data , labels
 
 def display_image(images, size):
     n = len(images)
@@ -168,7 +172,7 @@ def train(sess, adience, retrain = False):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 10
+    STEPS = 200
     MINIBATCH_SIZE = 20
 
     if os.path.exists(model_folder_name) & (not retrain):
@@ -182,10 +186,10 @@ def train(sess, adience, retrain = False):
         print ("Initialization done at:" , datetime.datetime.now())
         for epoch in range(STEPS):
             print ("Starting epoch", epoch, " at:", datetime.datetime.now())
-            for batch_count in range(len(adience.train.images)/MINIBATCH_SIZE):
+            for batch_count in range(int(len(adience.train.images)/MINIBATCH_SIZE)):
                 batch = adience.train.next_batch(MINIBATCH_SIZE)
                 sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
-            if(epoch%1 == 0):
+            if(epoch%10 == 0):
                 test(sess,accuracy)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
