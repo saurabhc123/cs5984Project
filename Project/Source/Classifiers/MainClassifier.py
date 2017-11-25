@@ -34,6 +34,9 @@ kaggle_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggl
 kaggle_images_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/Images')
 train_metadata_filename = 'Kaggle-str-process.csv'
 test_metadata_filename = 'Kaggle-str-process.csv'
+today = datetime.datetime.now()
+format = "%d_%m_%Y_%H_%M_%S"
+run_folder = today.strftime(format)
 
 
 x_main = tf.placeholder(tf.float32, shape=[None, feature_width])
@@ -49,7 +52,7 @@ def get_fc7_representation(sample, sess, fc7):
 x = Placeholders.x
 y_ = Placeholders.y_
 
-def test(sess, accuracy, test,fc7, word_vec, datasetType = "Test "):
+def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, epoch, datasetType = "Test "):
     print ("Starting Test")
     number_of_test_batches = 5
     number_of_samples_per_batch = 10
@@ -64,6 +67,12 @@ def test(sess, accuracy, test,fc7, word_vec, datasetType = "Test "):
     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1],
                                      keep_prob: 1.0})
     print (datasetType + "Accuracy: {:.4}%".format(acc * 100))
+    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1]})
+    predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
+    correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
+    write_results_to_file(mse, acc * 100, data, predictions, correct_predictions, epoch, datasetType)
+
+
 
 def test1(sess, accuracy, test,fc7, word_vec):
     print ("Starting Test")
@@ -75,6 +84,13 @@ def test1(sess, accuracy, test,fc7, word_vec):
     print ("Accuracy: {:.4}%".format(acc * 100))
 
 def train(sess, train, retrain, fc7):
+    output_folder = os.path.join(current_working_folder,"Project/output")
+    output_folder = os.path.join(output_folder, run_folder)
+    if not os.path.exists(output_folder):
+        print("Creating folder: " + output_folder)
+        os.makedirs(output_folder)
+    else:
+        print("Folder exists: " + output_folder)
 
     kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename)
     word_vec = w2v.word2vec()
@@ -93,7 +109,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 300
+    STEPS = 3
     MINIBATCH_SIZE = 50
 
     #Retrieve training data
@@ -121,9 +137,9 @@ def train(sess, train, retrain, fc7):
                 mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1]})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                test(sess, accuracy, kdm.train, fc7, word_vec, datasetType="Train")
-                test(sess, accuracy, kdm.test, fc7, word_vec)
-        test(sess, accuracy, kdm.test, fc7, word_vec)
+                test(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Train")
+                test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch)
+        test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
     return accuracy
@@ -174,6 +190,37 @@ def one_hot(vec, vals=n_classes):
     out[range(n), vec] = 1
     return out
 
+def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_predictions, epoch, datasetType):
+    today = datetime.datetime.now()
+    format = "_%d_%m_%Y_%H_%M_%S"
+    filename = "output/" + run_folder + "/" +"Result_"+ datasetType + today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
+    with open(filename, 'wb') as myfile:
+        wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+        wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
+        wr.writerow(["Loss = " + str(loss)])
+        wr.writerow(get_header())
+        for i in range(len(test_data_raw)):
+            local_result = []
+            local_result.append(test_data_raw[i].name)
+            local_result.append(test_data_raw[i].description)
+            local_result.append(test_data_raw[i].tweet_text)
+            local_result.append(test_data_raw[i].link_color)
+            local_result.append(test_data_raw[i].sidebar_color)
+            local_result.append(test_data_raw[i].label)
+            local_result.append(predictions[i])
+            local_result.append(correct_predictions[i])
+            wr.writerow(local_result)
 
+def get_header():
+    header = []
+    header.append('name')
+    header.append('description')
+    header.append('tweet_text')
+    header.append('link_color')
+    header.append('sidebar_color')
+    header.append('true label')
+    header.append('predicted label')
+    header.append('correct_prediction')
+    return header
 
 
