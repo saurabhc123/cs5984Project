@@ -22,7 +22,7 @@ model_filename = os.path.join(model_folder_name,"main_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
-word_vec_length = 0#600#300
+word_vec_length = 600#300
 profile_color_feature_length = 6
 feature_width = 512 + word_vec_length + profile_color_feature_length
 img_dim = 100
@@ -41,22 +41,27 @@ keep_prob = tf.placeholder(tf.float32)
 
 
 def get_fc7_representation(sample, sess, fc7):
-    image = np.array(sample).reshape((-1,img_dim,img_dim,n_channels))
-    fc7rep = sess.run(fc7, feed_dict= {x : image})
-    return np.array(fc7rep)
+    try:
+        image = np.array(sample).reshape((-1,img_dim,img_dim,n_channels))
+        fc7rep = sess.run(fc7, feed_dict= {x : image})
+        return np.array(fc7rep)
+    except:
+        print("Error with image. Shape below")
+        print(np.array(sample).shape)
+        raise
 
 
 x = Placeholders.x
 y_ = Placeholders.y_
 
-def test(sess, accuracy, test,fc7, word_vec, datasetType = "Test "):
-    print ("Starting Test")
+def test(sess, accuracy, test,fc7, word_vec, datasetType = "Test"):
+    print ("Starting Test on dataset:" + datasetType)
     number_of_test_batches = 5
     number_of_samples_per_batch = 10
     total_samples = number_of_test_batches * number_of_samples_per_batch
     random_index = random.randint(0,len(test) - total_samples)
 
-    #print len(adience.test.images)
+    print (len(test))
     data = test[random_index:random_index+total_samples]
     batch = get_features_and_labels(data, sess, fc7, word_vec)
     batch_x = batch[0].reshape(-1, feature_width)
@@ -65,14 +70,6 @@ def test(sess, accuracy, test,fc7, word_vec, datasetType = "Test "):
                                      keep_prob: 1.0})
     print (datasetType + "Accuracy: {:.4}%".format(acc * 100))
 
-def test1(sess, accuracy, test,fc7, word_vec):
-    print ("Starting Test")
-    batch = get_features_and_labels(test, sess, fc7, word_vec)
-    batch_x = batch[0].reshape(-1, feature_width)
-
-    acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1],
-                                     keep_prob: 1.0})
-    print ("Accuracy: {:.4}%".format(acc * 100))
 
 def train(sess, train, retrain, fc7):
 
@@ -131,29 +128,36 @@ def train(sess, train, retrain, fc7):
 
 
 def get_features_and_labels(batch_data, sess, fc7, word_vec):
-    labels = list(map(lambda x: x.label , batch_data))
-    features = list(map(lambda x: get_feature_from_sample(x, sess, fc7, word_vec), batch_data))
-    #print(labels.shape , images.shape)
-    labels = one_hot(np.hstack([d for d in labels]), n_classes)
-    #print(features.shape , labels.shape)
-    return np.array(features), np.array(labels)
+    try:
+        labels = list(map(lambda x: x.label , batch_data))
+        features = list(map(lambda x: get_feature_from_sample(x, sess, fc7, word_vec), batch_data))
+        #print(labels.shape , images.shape)
+        labels = one_hot(np.hstack([d for d in labels]), n_classes)
+        #print(features.shape , labels.shape)
+        return np.array(features), np.array(labels)
+    except:
+        raise
 
 
 
 def get_feature_from_sample(x, sess, fc7, word_vec):
-    features = np.array([]).reshape((1,0))
-    fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
-    #desc_word_vector = word_vec.get_sentence_vector(x.description)
-    #tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
-    sidebar_feature = hex_to_rgb(x.sidebar_color)
-    link_color_feature = hex_to_rgb(x.link_color)
-    features = np.hstack((features,fc7_x))
-    #features = np.hstack((features,desc_word_vector))
-    #features = np.hstack((features,tweet_word_vector))
-    features = np.hstack((features,sidebar_feature))
-    features = np.hstack((features,link_color_feature))
-    features = features.reshape(-1, feature_width)
-    return features
+    try:
+        features = np.array([]).reshape((1,0))
+        fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
+        desc_word_vector = word_vec.get_sentence_vector(x.description)
+        tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
+        sidebar_feature = hex_to_rgb(x.sidebar_color)
+        link_color_feature = hex_to_rgb(x.link_color)
+        features = np.hstack((features,fc7_x))
+        features = np.hstack((features,desc_word_vector))
+        features = np.hstack((features,tweet_word_vector))
+        features = np.hstack((features,sidebar_feature))
+        features = np.hstack((features,link_color_feature))
+        features = features.reshape(-1, feature_width)
+        return features
+    except:
+        print("Error in data:" + x.name)
+        raise
 
 
 def hex_to_rgb(hex_color):
