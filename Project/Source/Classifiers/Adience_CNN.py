@@ -155,8 +155,8 @@ def train(sess, adience, retrain = False):
     conv3_flat = tf.reshape(conv3_pool, [-1, 7 * 7 * 384])
 
     with tf.variable_scope("FC-7"):
-        full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
-        fc7layer = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
+        full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 4096))
+        fc7layer = tf.nn.elu(ConvHelper.full_layer(full_1, 4096))
 
     y_conv = ConvHelper.full_layer(fc7layer, n_classes)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
