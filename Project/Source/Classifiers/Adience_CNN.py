@@ -60,7 +60,7 @@ class AdienceDataManager(object):
     def __init__(self):
         train_data_image_filenames , train_labels = load_data(metadata_files_path + train_metadata_filename)
         #imgs = [plt.imread(fname)[...,:n_channels] for fname in train_data_image_filenames]
-        train_d, test_d, train_labels, test_labels = train_test_split(train_data_image_filenames, train_labels, test_size=0.3, random_state=42 )
+        train_d, test_d, train_labels, test_labels = train_test_split(train_data_image_filenames, train_labels, test_size=0.1, random_state=42 )
         self.train = AdienceLoader(train_d, train_labels).load()
         print("Training data size:" + str(len(train_labels)))
         #test_data_image_filenames , test_labels = load_data(metadata_files_path + test_metadata_filename)
@@ -131,11 +131,9 @@ def test(sess, accuracy):
     random_index = random.randint(0,len(adience.test.images) - total_samples)
 
     #print len(adience.test.images)
-    X = adience.test.images[random_index:random_index+total_samples].reshape(number_of_test_batches, number_of_samples_per_batch, img_dim, img_dim, n_channels)
-    Y = adience.test.labels[random_index:random_index+total_samples].reshape(number_of_test_batches, number_of_samples_per_batch, n_classes)
-    acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
-                                                 keep_prob: 1.0})
-                   for i in range(number_of_test_batches)])
+    X = adience.test.images
+    Y = adience.test.labels
+    acc = sess.run(accuracy, feed_dict={x: X, y_: Y,keep_prob: 1.0})
     print ("Accuracy: {:.4}%".format(acc * 100))
 
 def get_fc7_representation(sample, sess, fc7):
@@ -172,7 +170,7 @@ def train(sess, adience, retrain = False):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 200
+    STEPS = 500
     MINIBATCH_SIZE = 20
 
     if os.path.exists(model_folder_name) & (not retrain):
@@ -201,7 +199,7 @@ y_ = Placeholders.y_
 
 keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
-    accuracy, fc7 = train(sess, adience, retrain=False)
+    accuracy, fc7 = train(sess, adience, retrain=True)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)

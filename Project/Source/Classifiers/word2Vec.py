@@ -107,7 +107,7 @@ class word2vec:
 
 
     def clean_sent(self, lem, sent):
-        #sent = unicode(sent,errors='ignore')
+        sent = unicode(sent,errors='ignore')
         words = sent.replace(","," ").replace(";", " ").replace("#"," ").replace(":", " ").replace("@", " ").split()
         filtered_words = filter(lambda word: word.isalpha() and len(word) > 1 and word != "http" and word != "rt", [self.full_pipeline(lem, word) for word in words])
         return ' '.join(self.filter_stopwords(filtered_words))

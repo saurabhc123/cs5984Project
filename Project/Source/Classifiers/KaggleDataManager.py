@@ -74,7 +74,8 @@ class KaggleDataManager(object):
                 img_data = sample.get_image_data()
                 goodData.append(sample)
             except:
-                print("Omitting:", sample.name)
+                pass
+                #print("Omitting:", sample.name)
         return goodData
 
     def next_batch(self, batch_size):
@@ -92,6 +93,8 @@ class KaggleSample(object):
         self.profile_image = rowData[5]
         self.sidebar_color = rowData[7]
         self.tweet_text = rowData[8]
+
+
 
     def get_image_data(self):
         file_name = self.profile_image.split('/')[-1]
