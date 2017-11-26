@@ -173,8 +173,6 @@ def get_features_and_labels(batch_data, sess, fc7, word_vec):
     #print(features.shape , labels.shape)
     return np.array(features), np.array(labels)
 
-
-
 def get_feature_from_sample(x, sess, fc7, word_vec):
     features = np.array([]).reshape((1,0))
     fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
