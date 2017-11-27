@@ -23,8 +23,8 @@ STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
 img_feature_width = 4096
-word_vec_length = 0#600#300
-profile_color_feature_length = 0#6
+word_vec_length = 600
+profile_color_feature_length = 6
 feature_width = img_feature_width + word_vec_length + profile_color_feature_length
 img_dim = 100
 n_channels = 3
@@ -112,7 +112,9 @@ def train(sess, train, retrain, fc7):
     kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename)
     word_vec = w2v.word2vec()
 
-    fully_connected = tf.nn.sigmoid(ConvHelper.full_layer(x_main , feature_width))
+    fully_connected1 = tf.nn.relu(ConvHelper.full_layer(x_main, feature_width))
+    fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1 , feature_width))
+
     y_conv = ConvHelper.full_layer(fully_connected, n_classes)
 
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
@@ -177,15 +179,15 @@ def get_features_and_labels(batch_data, sess, fc7, word_vec):
 def get_feature_from_sample(x, sess, fc7, word_vec):
     features = np.array([]).reshape((1,0))
     fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
-    #desc_word_vector = word_vec.get_sentence_vector(x.description)
-    #tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
-    #sidebar_feature = hex_to_rgb(x.sidebar_color)
-    #link_color_feature = hex_to_rgb(x.link_color)
+    desc_word_vector = word_vec.get_sentence_vector(x.description)
+    tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
+    sidebar_feature = hex_to_rgb(x.sidebar_color)
+    link_color_feature = hex_to_rgb(x.link_color)
     features = np.hstack((features,fc7_x))
-    #features = np.hstack((features,desc_word_vector))
-    #features = np.hstack((features,tweet_word_vector))
-    #features = np.hstack((features,sidebar_feature))
-    #features = np.hstack((features,link_color_feature))
+    features = np.hstack((features,desc_word_vector))
+    features = np.hstack((features,tweet_word_vector))
+    features = np.hstack((features,sidebar_feature))
+    features = np.hstack((features,link_color_feature))
     features = features.reshape(-1, feature_width)
     return features
 

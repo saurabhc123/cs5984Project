@@ -199,7 +199,7 @@ y_ = Placeholders.y_
 
 keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
-    accuracy, fc7 = train(sess, adience, retrain=True)
+    accuracy, fc7 = train(sess, adience, retrain=False)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
