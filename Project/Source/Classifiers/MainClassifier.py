@@ -22,7 +22,7 @@ model_filename = os.path.join(model_folder_name,"main_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
-img_feature_width = 4096
+img_feature_width = 512
 word_vec_length = 600
 profile_color_feature_length = 6
 feature_width = img_feature_width + word_vec_length + profile_color_feature_length
@@ -112,8 +112,8 @@ def train(sess, train, retrain, fc7):
     kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename)
     word_vec = w2v.word2vec()
 
-    fully_connected1 = tf.nn.relu(ConvHelper.full_layer(x_main, feature_width))
-    fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1 , feature_width))
+    fully_connected = tf.nn.relu(ConvHelper.full_layer(x_main, feature_width))
+    #fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1 , feature_width))
 
     y_conv = ConvHelper.full_layer(fully_connected, n_classes)
 
@@ -128,7 +128,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 500
+    STEPS = 300
     MINIBATCH_SIZE = 50
 
     #Retrieve training data
@@ -156,10 +156,12 @@ def train(sess, train, retrain, fc7):
                 mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1]})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                test(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Train")
+                train_accuracy = test(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Train")
                 test_accuracy = test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Test")
-                if test_accuracy > Placeholders.best_accuracy_so_far:
+                if (test_accuracy > Placeholders.best_accuracy_so_far):
                     Placeholders.best_accuracy_so_far = test_accuracy
+                    test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch)
+                elif (train_accuracy > 80):
                     test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch)
         test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss)
         save_path = saver.save(sess, model_filename)

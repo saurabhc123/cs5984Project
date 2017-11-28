@@ -60,11 +60,13 @@ class AdienceDataManager(object):
     def __init__(self):
         train_data_image_filenames , train_labels = load_data(metadata_files_path + train_metadata_filename)
         #imgs = [plt.imread(fname)[...,:n_channels] for fname in train_data_image_filenames]
-        train_d, test_d, train_labels, test_labels = train_test_split(train_data_image_filenames, train_labels, test_size=0.1, random_state=42 )
+        train_d, test_d, train_labels, test_labels = train_test_split(train_data_image_filenames, train_labels, test_size=0.3, random_state= random.randint(0,100) )
+        test_d, validation_d, test_labels, validation_labels = train_test_split(test_d, test_labels, test_size=0.5, random_state = random.randint(0,100) )
         self.train = AdienceLoader(train_d, train_labels).load()
         print("Training data size:" + str(len(train_labels)))
         #test_data_image_filenames , test_labels = load_data(metadata_files_path + test_metadata_filename)
         self.test = AdienceLoader(test_d, test_labels).load()
+        self.validation = AdienceLoader(validation_d, validation_labels).load()
         print("Test data size:" + str(len(test_labels)))
 
 
@@ -123,6 +125,45 @@ def full_layer(input, size):
     b = bias_variable([size])
     return tf.matmul(input, W) + b
 
+def validate(sess, accuracy):
+    print ("Starting Test")
+    number_of_test_batches = 10
+    number_of_samples_per_batch = 20
+    total_samples = number_of_test_batches * number_of_samples_per_batch
+    random_index = random.randint(0,len(adience.validation.images) - total_samples)
+
+    #print len(adience.test.images)
+    X = adience.validation.images
+    Y = adience.validation.labels
+    perform_evaluation(X, Y, accuracy, sess, "Validation")
+
+# num_of_samples_to_test = 10
+#
+# def t(sess):
+#     print "Starting Test"
+#     X = cifar.test.images.reshape(num_of_samples_to_test, 1000, 32, 32, 3)
+#     Y = cifar.test.labels.reshape(num_of_samples_to_test, 1000, n_classes)
+#     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
+#                                                  keep_prob: 1.0})
+#                    for i in range(num_of_samples_to_test)])
+#     print "Accuracy: {:.4}%".format(acc * 100)
+
+def perform_evaluation(X, Y, accuracy, sess, test_type):
+    number_of_test_batches = 2
+    number_of_samples_per_batch = int(len(X)/number_of_test_batches)
+    total_samples = number_of_test_batches * number_of_samples_per_batch
+
+    x_total = X[:total_samples]
+    y_total = Y[:total_samples]
+
+    X = x_total.reshape(number_of_test_batches, number_of_samples_per_batch, img_dim, img_dim, n_channels)
+    Y = y_total.reshape(number_of_test_batches, number_of_samples_per_batch, n_classes)
+    acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
+                                                 keep_prob: 1.0})
+                   for i in range(number_of_test_batches)])
+    print(test_type + "Accuracy: {:.4}%".format(acc * 100))
+
+
 def test(sess, accuracy):
     print ("Starting Test")
     number_of_test_batches = 10
@@ -133,8 +174,7 @@ def test(sess, accuracy):
     #print len(adience.test.images)
     X = adience.test.images
     Y = adience.test.labels
-    acc = sess.run(accuracy, feed_dict={x: X, y_: Y,keep_prob: 1.0})
-    print ("Accuracy: {:.4}%".format(acc * 100))
+    perform_evaluation(X, Y, accuracy, sess, "Test")
 
 def get_fc7_representation(sample, sess, fc7):
     image = np.array(sample).reshape((1,img_dim,img_dim,n_channels))
@@ -155,8 +195,8 @@ def train(sess, adience, retrain = False):
     conv3_flat = tf.reshape(conv3_pool, [-1, 7 * 7 * 384])
 
     with tf.variable_scope("FC-7"):
-        full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 4096))
-        fc7layer = tf.nn.elu(ConvHelper.full_layer(full_1, 4096))
+        full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
+        fc7layer = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
 
     y_conv = ConvHelper.full_layer(fc7layer, n_classes)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
@@ -170,7 +210,7 @@ def train(sess, adience, retrain = False):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 500
+    STEPS = 200
     MINIBATCH_SIZE = 20
 
     if os.path.exists(model_folder_name) & (not retrain):
@@ -188,7 +228,8 @@ def train(sess, adience, retrain = False):
                 batch = adience.train.next_batch(MINIBATCH_SIZE)
                 sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
             if(epoch%10 == 0):
-                test(sess,accuracy)
+                validate(sess, accuracy)
+        test(sess, accuracy)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
     return accuracy, fc7layer
@@ -199,12 +240,12 @@ y_ = Placeholders.y_
 
 keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
-    accuracy, fc7 = train(sess, adience, retrain=False)
+    accuracy, fc7 = train(sess, adience, retrain=True)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
     print (fc7rep, fc7rep.shape)
-    test(sess,accuracy)
+    validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
         MainClassifier.train(sess,None, True, fc7)
 
