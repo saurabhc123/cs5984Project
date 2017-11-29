@@ -137,19 +137,9 @@ def validate(sess, accuracy):
     Y = adience.validation.labels
     perform_evaluation(X, Y, accuracy, sess, "Validation")
 
-# num_of_samples_to_test = 10
-#
-# def t(sess):
-#     print "Starting Test"
-#     X = cifar.test.images.reshape(num_of_samples_to_test, 1000, 32, 32, 3)
-#     Y = cifar.test.labels.reshape(num_of_samples_to_test, 1000, n_classes)
-#     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
-#                                                  keep_prob: 1.0})
-#                    for i in range(num_of_samples_to_test)])
-#     print "Accuracy: {:.4}%".format(acc * 100)
 
-def perform_evaluation(X, Y, accuracy, sess, test_type):
-    number_of_test_batches = 2
+def perform_evaluation(X, Y, accuracy, sess, test_type, loss = None):
+    number_of_test_batches = 10
     number_of_samples_per_batch = int(len(X)/number_of_test_batches)
     total_samples = number_of_test_batches * number_of_samples_per_batch
 
@@ -161,8 +151,24 @@ def perform_evaluation(X, Y, accuracy, sess, test_type):
     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
                                                  keep_prob: 1.0})
                    for i in range(number_of_test_batches)])
+    if loss is not None:
+        mse = np.sum([loss.eval(feed_dict={x: X[i], y_: Y[i], keep_prob: 1.0})
+                 for i in range(number_of_test_batches)])
+        print(test_type + "Loss: {:.4}".format(mse))
     print(test_type + "Accuracy: {:.4}%".format(acc * 100))
 
+
+def test_on_train(sess, accuracy, loss):
+    print ("Starting Test")
+    number_of_test_batches = 10
+    number_of_samples_per_batch = 20
+    total_samples = number_of_test_batches * number_of_samples_per_batch
+    random_index = random.randint(0,len(adience.test.images) - total_samples)
+
+    #print len(adience.test.images)
+    X = adience.train.images
+    Y = adience.train.labels
+    perform_evaluation(X, Y, accuracy, sess, "Training",loss)
 
 def test(sess, accuracy):
     print ("Starting Test")
@@ -195,8 +201,8 @@ def train(sess, adience, retrain = False):
     conv3_flat = tf.reshape(conv3_pool, [-1, 7 * 7 * 384])
 
     with tf.variable_scope("FC-7"):
-        full_1 = tf.nn.elu(ConvHelper.full_layer(conv3_flat, 512))
-        fc7layer = tf.nn.elu(ConvHelper.full_layer(full_1, 512))
+        full_1 = tf.nn.relu(ConvHelper.full_layer(conv3_flat, 512))
+        fc7layer = tf.nn.relu(ConvHelper.full_layer(full_1, 512))
 
     y_conv = ConvHelper.full_layer(fc7layer, n_classes)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
@@ -210,7 +216,7 @@ def train(sess, adience, retrain = False):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 200
+    STEPS = 500
     MINIBATCH_SIZE = 20
 
     if os.path.exists(model_folder_name) & (not retrain):
@@ -228,6 +234,7 @@ def train(sess, adience, retrain = False):
                 batch = adience.train.next_batch(MINIBATCH_SIZE)
                 sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
             if(epoch%10 == 0):
+                test_on_train(sess, accuracy, loss)
                 validate(sess, accuracy)
         test(sess, accuracy)
         save_path = saver.save(sess, model_filename)
@@ -240,7 +247,7 @@ y_ = Placeholders.y_
 
 keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
-    accuracy, fc7 = train(sess, adience, retrain=True)
+    accuracy, fc7 = train(sess, adience, retrain=False)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)

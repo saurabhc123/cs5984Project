@@ -68,7 +68,7 @@ def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, ep
     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1],
                                      keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
-    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1]})
+    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
     predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
     correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
     write_results_to_file(mse, acc * 100, data, predictions, correct_predictions, epoch, datasetType)
@@ -85,7 +85,7 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
 
     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
-    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1]})
+    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
     predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
     correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
     write_results_to_file(mse, acc * 100, data, predictions, correct_predictions, epoch, datasetType)
@@ -114,8 +114,8 @@ def train(sess, train, retrain, fc7):
 
     fully_connected = tf.nn.relu(ConvHelper.full_layer(x_main, feature_width))
     #fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1 , feature_width))
-
-    y_conv = ConvHelper.full_layer(fully_connected, n_classes)
+    fully_connected_dropout = tf.nn.dropout(fully_connected, keep_prob=keep_prob)
+    y_conv = ConvHelper.full_layer(fully_connected_dropout, n_classes)
 
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
                                                                    labels=y_))
@@ -128,7 +128,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 300
+    STEPS = 500
     MINIBATCH_SIZE = 50
 
     #Retrieve training data
@@ -149,11 +149,11 @@ def train(sess, train, retrain, fc7):
             for batch_count in range(int(len(kdm.train)/MINIBATCH_SIZE)):
                 batch = get_features_and_labels(kdm.next_batch(MINIBATCH_SIZE), sess, fc7, word_vec)
                 batch_x = batch[0].reshape(-1, feature_width)
-                sess.run(train_step, feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 1.0})
+                sess.run(train_step, feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 0.5})
             if(epoch%10 == 0):
                 #acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
                 #print ("Accuracy: {:.4}%".format(acc * 100))
-                mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1]})
+                mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 0.5})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
                 train_accuracy = test(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Train")
