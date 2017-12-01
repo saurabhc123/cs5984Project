@@ -13,9 +13,8 @@ import datetime
 import os as os
 import random
 import Placeholders
-import KaggleDataManager
+import KaggleRNNDataManager
 import word2Vec as w2v
-from sklearn.metrics import f1_score
 
 
 model_folder_name = "models/adience"
@@ -85,10 +84,6 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
     mse = loss.eval(feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0})
     print(datasetType + " Loss: {:.4}".format(mse))
     predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0}))
-    f1_predictions = np.array(predictions)
-    f1_truelabels = np.argmax(batch_labels, 1)
-    f1score = f1_score(f1_truelabels, f1_predictions, average='macro')
-    print(datasetType + " F1: {:.4}%".format(f1score))
     correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0}))
     raw_data = kdm.test_raw if datasetType == "Test" else (kdm.train_raw if datasetType == "Train" else kdm.validation_raw)
     write_results_to_file(mse, acc * 100, raw_data, predictions, correct_predictions, epoch, datasetType)
@@ -114,14 +109,21 @@ def train(sess, train, retrain, fc7):
         print("Folder exists: " + output_folder)
 
     word_vec = w2v.word2vec()
-    kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
+    kdm = KaggleRNNDataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
 
 
-    fully_connected1 = tf.nn.elu(ConvHelper.full_layer(x_main, Placeholders.feature_width))
-    fully_connected1_dropout = tf.nn.dropout(fully_connected1, keep_prob=keep_prob)
-    #fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout , Placeholders.feature_width))
-    #fully_connected_dropout = tf.nn.dropout(fully_connected, keep_prob=keep_prob)
-    y_conv = ConvHelper.full_layer(fully_connected1_dropout, Placeholders.n_classes)
+    basic_cell = tf.contrib.rnn.BasicRNNCell(num_units = Placeholders.n_neurons, activation = tf.tanh)
+    outputs , states = tf.nn.dynamic_rnn(basic_cell, Placeholders.rnn_X, dtype= tf.float32)
+    other_features = Placeholders.rnn_other_features
+    rnn_features = np.hstack((states, other_features))
+    y_conv = tf.layers.dense(rnn_features, Placeholders.n_classes)
+    #xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels= Placeholders.y_ , logits= logits)
+    #loss = tf.reduce_mean(xentropy)
+    #optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    #optimizer = tf.train.RMSPropOptimizer(0.1, 0.9, 0.01)
+    #training_op = optimizer.minimize(loss)
+    #correct = tf.nn.in_top_k(logits, Placeholders.y_, 1)
+
 
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
                                                                    labels=y_))
@@ -136,6 +138,8 @@ def train(sess, train, retrain, fc7):
 
     STEPS = 500
     MINIBATCH_SIZE = 50
+
+    #Retrieve training data
 
     #training_data = get_fc7_representation(train, sess, fc7)
 
