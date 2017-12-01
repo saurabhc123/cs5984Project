@@ -22,9 +22,9 @@ model_filename = os.path.join(model_folder_name,"main_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_classes = 2
-img_feature_width = 512
+img_feature_width = 0#512
 word_vec_length = 600
-profile_color_feature_length = 6
+profile_color_feature_length = 0#6
 feature_width = img_feature_width + word_vec_length + profile_color_feature_length
 img_dim = 100
 n_channels = 3
@@ -75,8 +75,8 @@ def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, ep
     return acc * 100
 
 
-def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, epoch = 0, datasetType = "Test All"):
-    print ("Starting Test All")
+def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, epoch = 0, datasetType = "Test"):
+    print ("Starting test on all data:" + datasetType)
 
     #print len(adience.test.images)
     data = test
@@ -86,9 +86,11 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
     mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
+    print(datasetType + " Loss: {:.4}".format(mse))
     predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
     correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
     write_results_to_file(mse, acc * 100, data, predictions, correct_predictions, epoch, datasetType)
+    return acc*100
 
 
 def test1(sess, accuracy, test,fc7, word_vec):
@@ -112,8 +114,9 @@ def train(sess, train, retrain, fc7):
     kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename)
     word_vec = w2v.word2vec()
 
-    fully_connected = tf.nn.relu(ConvHelper.full_layer(x_main, feature_width))
-    #fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1 , feature_width))
+    fully_connected1 = tf.nn.relu(ConvHelper.full_layer(x_main, feature_width))
+    fully_connected1_dropout = tf.nn.dropout(fully_connected1, keep_prob=keep_prob)
+    fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout , feature_width))
     fully_connected_dropout = tf.nn.dropout(fully_connected, keep_prob=keep_prob)
     y_conv = ConvHelper.full_layer(fully_connected_dropout, n_classes)
 
@@ -129,7 +132,7 @@ def train(sess, train, retrain, fc7):
     saver = tf.train.Saver()
 
     STEPS = 500
-    MINIBATCH_SIZE = 50
+    MINIBATCH_SIZE = 200
 
     #Retrieve training data
 
@@ -151,17 +154,16 @@ def train(sess, train, retrain, fc7):
                 batch_x = batch[0].reshape(-1, feature_width)
                 sess.run(train_step, feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 0.5})
             if(epoch%10 == 0):
-                #acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
-                #print ("Accuracy: {:.4}%".format(acc * 100))
                 mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 0.5})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                train_accuracy = test(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Train")
-                test_accuracy = test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Test")
-                if (test_accuracy > Placeholders.best_accuracy_so_far):
-                    Placeholders.best_accuracy_so_far = test_accuracy
+                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Train")
+                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Validation")
+                #test_accuracy = test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Test")
+                if (validation_accuracy > Placeholders.best_accuracy_so_far):
+                    Placeholders.best_accuracy_so_far = validation_accuracy
                     test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch)
-                elif (train_accuracy > 80):
+                elif (train_accuracy > 60):
                     test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch)
         test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss)
         save_path = saver.save(sess, model_filename)
@@ -180,16 +182,16 @@ def get_features_and_labels(batch_data, sess, fc7, word_vec):
 
 def get_feature_from_sample(x, sess, fc7, word_vec):
     features = np.array([]).reshape((1,0))
-    fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
+    #fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
     desc_word_vector = word_vec.get_sentence_vector(x.description)
     tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
-    sidebar_feature = hex_to_rgb(x.sidebar_color)
-    link_color_feature = hex_to_rgb(x.link_color)
-    features = np.hstack((features,fc7_x))
+    #sidebar_feature = hex_to_rgb(x.sidebar_color)
+    #link_color_feature = hex_to_rgb(x.link_color)
+    #features = np.hstack((features,fc7_x))
     features = np.hstack((features,desc_word_vector))
     features = np.hstack((features,tweet_word_vector))
-    features = np.hstack((features,sidebar_feature))
-    features = np.hstack((features,link_color_feature))
+    #features = np.hstack((features,sidebar_feature))
+    #features = np.hstack((features,link_color_feature))
     features = features.reshape(-1, feature_width)
     return features
 

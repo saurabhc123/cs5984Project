@@ -32,13 +32,13 @@ class KaggleDataManager(object):
         self._i = 0
         self.data = []
         self.read_data_from_csv(trainingDataFileName)
-        clean_data = train_test_split(self.get_clean_kaggle_dataset(), test_size = 0.3, random_state = 42)
+        clean_data = train_test_split(self.get_clean_kaggle_dataset(), test_size = 0.3, random_state = random.randint(0,100))
         #e_d = jsonpickle.encode(clean_data)
         #d_d = jsonpickle.decode(e_d)
         #self.serialize_data(clean_data)
         self.train = clean_data[0]
         print(str(len(self.train)) + " total input training examples.")
-        self.test = clean_data[1] #self.train
+        self.test, self.validation = train_test_split(clean_data[1] , test_size = 0.5, random_state = random.randint(0,100))
 
     def read_data_from_csv(self, trainingDataFileName):
         with open(trainingDataFileName, 'rt') as csvfile:
