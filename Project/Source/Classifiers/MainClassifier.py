@@ -15,19 +15,13 @@ import random
 import Placeholders
 import KaggleDataManager
 import word2Vec as w2v
-import webcolors as wc
+
 
 model_folder_name = "models/adience"
 model_filename = os.path.join(model_folder_name,"main_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
-n_classes = 2
-img_feature_width = 0#512
-word_vec_length = 600
-profile_color_feature_length = 0#6
-feature_width = img_feature_width + word_vec_length + profile_color_feature_length
-img_dim = 100
-n_channels = 3
+
 
 #Kaggle data
 current_working_folder = os.path.dirname(os.getcwd())
@@ -40,67 +34,70 @@ format = "%d_%m_%Y_%H_%M_%S"
 run_folder = today.strftime(format)
 
 
-x_main = tf.placeholder(tf.float32, shape=[None, feature_width])
+x_main = tf.placeholder(tf.float32, shape=[None, Placeholders.feature_width])
 keep_prob = tf.placeholder(tf.float32)
 
 
-def get_fc7_representation(sample, sess, fc7):
-    image = np.array(sample).reshape((-1,img_dim,img_dim,n_channels))
-    fc7rep = sess.run(fc7, feed_dict= {x : image})
-    return np.array(fc7rep)
+
 
 
 x = Placeholders.x
 y_ = Placeholders.y_
 
-def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, epoch, datasetType = "Test"):
+def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kdm, epoch, datasetType = "Test"):
     print ("Starting Test")
     number_of_test_batches = 5
     number_of_samples_per_batch = 10
     total_samples = number_of_test_batches * number_of_samples_per_batch
-    random_index = random.randint(0,len(test) - total_samples)
+    random_index = random.randint(0,len(test.features) - total_samples)
 
     #print len(adience.test.images)
-    data = test[random_index:random_index+total_samples]
-    batch = get_features_and_labels(data, sess, fc7, word_vec)
-    batch_x = batch[0].reshape(-1, feature_width)
+    data = test
+    batch_features = data.features[random_index:random_index+total_samples]
+    batch_labels = data.labels[random_index:random_index+total_samples]
+    batch_x = batch_features.reshape(-1, Placeholders.feature_width)
 
-    acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1],
+    acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch_labels,
                                      keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
-    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
-    predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
-    correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
-    write_results_to_file(mse, acc * 100, data, predictions, correct_predictions, epoch, datasetType)
+    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0})
+    predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0}))
+    correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0}))
+    raw_data = kdm.test_raw if datasetType == "Test" else (kdm.train_raw if datasetType == "Train" else kdm.validation_raw)
+    write_results_to_file(mse, acc * 100, raw_data, predictions, correct_predictions, epoch, datasetType)
     return acc * 100
 
 
-def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, epoch = 0, datasetType = "Test"):
+def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kdm, epoch = 0, datasetType = "Test"):
     print ("Starting test on all data:" + datasetType)
 
     #print len(adience.test.images)
     data = test
-    batch = get_features_and_labels(data, sess, fc7, word_vec)
-    batch_x = batch[0].reshape(-1, feature_width)
+    #batch_features =  data.features
+    #batch_labels = data.labels
+    batch_features = data.features[:, :Placeholders.feature_width]
+    batch_labels = one_hot(data.features[:, Placeholders.feature_width])
+    batch_x = batch_features#batch_features.reshape(-1, Placeholders.feature_width)
 
-    acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
+    acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
-    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0})
+    mse = loss.eval(feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0})
     print(datasetType + " Loss: {:.4}".format(mse))
-    predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
-    correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch[1], keep_prob: 1.0}))
-    write_results_to_file(mse, acc * 100, data, predictions, correct_predictions, epoch, datasetType)
+    predictions = np.array(sess.run(tf.argmax(y_conv, 1), feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0}))
+    correct_predictions = np.array(sess.run(correct_prediction, feed_dict={x_main: batch_x, y_: batch_labels, keep_prob: 1.0}))
+    raw_data = kdm.test_raw if datasetType == "Test" else (kdm.train_raw if datasetType == "Train" else kdm.validation_raw)
+    write_results_to_file(mse, acc * 100, raw_data, predictions, correct_predictions, epoch, datasetType)
     return acc*100
 
 
-def test1(sess, accuracy, test,fc7, word_vec):
-    print ("Starting Test")
-    batch = get_features_and_labels(test, sess, fc7, word_vec)
-    batch_x = batch[0].reshape(-1, feature_width)
-
-    acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1],
-                                     keep_prob: 1.0})
-    print ("Accuracy: {:.4}%".format(acc * 100))
+# def test1(sess, accuracy, test,fc7, word_vec):
+#     print ("Starting Test")
+#     batch = get_features_and_labels(test, sess, fc7, word_vec)
+#     batch_x = batch[0].reshape(-1, Placeholders.feature_width)
+#
+#     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch[1],
+#                                      keep_prob: 1.0})
+#     print ("Accuracy: {:.4}%".format(acc * 100))
 
 def train(sess, train, retrain, fc7):
     output_folder = os.path.join(current_working_folder,"Project/output")
@@ -111,14 +108,15 @@ def train(sess, train, retrain, fc7):
     else:
         print("Folder exists: " + output_folder)
 
-    kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename)
     word_vec = w2v.word2vec()
+    kdm = KaggleDataManager.KaggleDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
 
-    fully_connected1 = tf.nn.relu(ConvHelper.full_layer(x_main, feature_width))
+
+    fully_connected1 = tf.nn.relu(ConvHelper.full_layer(x_main, Placeholders.feature_width))
     fully_connected1_dropout = tf.nn.dropout(fully_connected1, keep_prob=keep_prob)
-    fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout , feature_width))
+    fully_connected = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout , Placeholders.feature_width))
     fully_connected_dropout = tf.nn.dropout(fully_connected, keep_prob=keep_prob)
-    y_conv = ConvHelper.full_layer(fully_connected_dropout, n_classes)
+    y_conv = ConvHelper.full_layer(fully_connected_dropout, Placeholders.n_classes)
 
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
                                                                    labels=y_))
@@ -132,7 +130,7 @@ def train(sess, train, retrain, fc7):
     saver = tf.train.Saver()
 
     STEPS = 500
-    MINIBATCH_SIZE = 200
+    MINIBATCH_SIZE = 50
 
     #Retrieve training data
 
@@ -149,67 +147,35 @@ def train(sess, train, retrain, fc7):
         print ("Initialization done at:" , datetime.datetime.now())
         for epoch in range(STEPS):
             print ("Starting epoch", epoch, " at:", datetime.datetime.now())
-            for batch_count in range(int(len(kdm.train)/MINIBATCH_SIZE)):
-                batch = get_features_and_labels(kdm.next_batch(MINIBATCH_SIZE), sess, fc7, word_vec)
-                batch_x = batch[0].reshape(-1, feature_width)
-                sess.run(train_step, feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 0.5})
+            for batch_count in range(int(len(kdm.train.features)/MINIBATCH_SIZE)):
+                batch = kdm.next_batch(MINIBATCH_SIZE)
+                features = batch[0][:,:Placeholders.feature_width]
+                #print(batch[0][:,Placeholders.feature_width])
+                labels = one_hot(batch[0][:,Placeholders.feature_width])
+                #print(features.shape)
+                #print(labels.shape)
+                batch_x = features
+                sess.run(train_step, feed_dict={x_main: batch_x, y_: labels,keep_prob: 0.5})
             if(epoch%10 == 0):
-                mse = loss.eval(feed_dict={x_main: batch_x, y_: batch[1],keep_prob: 0.5})
+                mse = loss.eval(feed_dict={x_main: batch_x, y_: labels, keep_prob: 0.5})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Train")
-                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Validation")
+                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch, datasetType="Train")
+                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch, datasetType="Validation")
                 #test_accuracy = test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Test")
                 if (validation_accuracy > Placeholders.best_accuracy_so_far):
                     Placeholders.best_accuracy_so_far = validation_accuracy
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch)
+                    test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch)
                 elif (train_accuracy > 60):
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch)
-        test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss)
+                    test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch)
+        test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, kdm)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
     return accuracy
 
-
-
-def get_features_and_labels(batch_data, sess, fc7, word_vec):
-    labels = list(map(lambda x: x.label , batch_data))
-    features = list(map(lambda x: get_feature_from_sample(x, sess, fc7, word_vec), batch_data))
-    #print(labels.shape , images.shape)
-    labels = one_hot(np.hstack([d for d in labels]), n_classes)
-    #print(features.shape , labels.shape)
-    return np.array(features), np.array(labels)
-
-def get_feature_from_sample(x, sess, fc7, word_vec):
-    features = np.array([]).reshape((1,0))
-    #fc7_x = get_fc7_representation(x.get_image_data(), sess, fc7)
-    desc_word_vector = word_vec.get_sentence_vector(x.description)
-    tweet_word_vector = word_vec.get_sentence_vector(x.tweet_text)
-    #sidebar_feature = hex_to_rgb(x.sidebar_color)
-    #link_color_feature = hex_to_rgb(x.link_color)
-    #features = np.hstack((features,fc7_x))
-    features = np.hstack((features,desc_word_vector))
-    features = np.hstack((features,tweet_word_vector))
-    #features = np.hstack((features,sidebar_feature))
-    #features = np.hstack((features,link_color_feature))
-    features = features.reshape(-1, feature_width)
-    return features
-
-
-def hex_to_rgb(hex_color):
-    base_color = np.zeros(shape=[1,3])
-    if(hex_color is None):
-        return base_color
-    try:
-        color = np.array(wc.hex_to_rgb("#" + hex_color))
-        return color.reshape(1,3)
-    except:
-        pass
-    return base_color
-
-
-def one_hot(vec, vals=n_classes):
+def one_hot(vec, vals = Placeholders.n_classes):
     n = len(vec)
+    vec = [int(val) for val in vec]
     out = np.zeros((n, vals))
     out[range(n), vec] = 1
     return out
@@ -217,7 +183,7 @@ def one_hot(vec, vals=n_classes):
 def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_predictions, epoch, datasetType):
     today = datetime.datetime.now()
     format = "_%d_%m_%Y_%H_%M_%S"
-    filename = "output/" + run_folder + "/" +"Result_"+ datasetType + today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
+    filename = "output/" + run_folder + "/" + datasetType + today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
     with open(filename, 'wt') as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
