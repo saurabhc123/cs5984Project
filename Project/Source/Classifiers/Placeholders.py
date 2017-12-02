@@ -14,7 +14,7 @@ feature_width = img_feature_width + text_feature_length + profile_color_feature_
 best_accuracy_so_far = 0.0
 
 x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, n_channels])
-y_ = tf.placeholder(tf.float32, shape=[None, n_classes])
+y_ = tf.placeholder(tf.int32, shape=[None, n_classes])
 
 
 rnn_X = tf.placeholder(tf.float32, [None, n_steps, n_inputs])

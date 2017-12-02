@@ -15,6 +15,9 @@ import random
 import Placeholders
 import KaggleRNNDataManager
 import word2Vec as w2v
+from sklearn.metrics import f1_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
 
 
 model_folder_name = "models/adience"
@@ -81,7 +84,7 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
 
     features = batch_features[:, :Placeholders.feature_width]
     # print(batch[0][:,Placeholders.feature_width])
-    labels = one_hot(batch_features[:, -1])
+    labels = batch_labels
     # print("Features shape:")
     # print(features.shape)
     # print(labels.shape)
@@ -110,6 +113,12 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
                                                Placeholders.rnn_other_features: other_features,
                                                y_: labels,
                                                keep_prob: 1.0}))
+    f1_predictions = np.array(predictions)
+    f1_truelabels = np.argmax(batch_labels, 1)
+    f1score = f1_score(f1_truelabels, f1_predictions, average='macro')
+    precision = precision_score(f1_truelabels, f1_predictions, average='macro')
+    recall = recall_score(f1_truelabels, f1_predictions, average='macro')
+    print(datasetType + " Precision: {:.4}%".format(precision)+ " Recall: {:.4}%".format(recall)+ " F1: {:.4}%".format(f1score))
     raw_data = kdm.test_raw if datasetType == "Test" else (kdm.train_raw if datasetType == "Train" else kdm.validation_raw)
     write_results_to_file(mse, acc * 100, raw_data, predictions, correct_predictions, epoch, datasetType)
     return acc*100
@@ -133,7 +142,7 @@ def train(sess, train, retrain, fc7):
         outputs, states = tf.nn.dynamic_rnn(gru_cell, Placeholders.rnn_X, dtype=tf.float32)
 
     all_features = tf.concat([states, Placeholders.rnn_other_features], 1)
-    y_conv = tf.layers.dense(all_features, Placeholders.n_classes)
+    y_conv = tf.layers.dense(all_features, Placeholders.n_classes, activation=tf.nn.elu)
     #xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels= Placeholders.y_ , logits= logits)
     #loss = tf.reduce_mean(xentropy)
     #optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -143,12 +152,15 @@ def train(sess, train, retrain, fc7):
 
 
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
-                                                                   labels=y_))
+                                                                    labels=y_))
+
+    #cross_entropy = tf.reduce_mean(tf.square(tf.argmax(y_conv, 1) - tf.argmax(y_, 1)))
     loss = tf.reduce_mean(cross_entropy)
-    #train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
-    train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
+    #train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
+    #correct_prediction = tf.nn.in_top_k(tf.argmax(y_conv, 1), tf.argmax(Placeholders.y_, 1), 1)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     # Add ops to save and restore all the variables.
@@ -200,7 +212,7 @@ def train(sess, train, retrain, fc7):
                 mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
                                             Placeholders.rnn_other_features : other_features,
                                             y_: labels,
-                                            keep_prob: 0.5})
+                                            keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
                 train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch, datasetType="Train")

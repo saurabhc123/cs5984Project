@@ -109,6 +109,7 @@ class KaggleRNNDataSet(object):
         return np.array(features), np.array(labels)
 
     def get_normalized_dataset(self):
+
         index = 0
         normalized_features = np.array([]).reshape((len(self.features), 0))
         normalized_features =  np.hstack((normalized_features, preprocessing.scale(self.features[:,index : Placeholders.img_feature_width])))
@@ -128,7 +129,7 @@ class KaggleRNNDataSet(object):
 
 class KaggleRNNSample(object):
     def __init__(self, rowData, sess, fc7, word_vec):
-        self.label = int(0) if rowData[0] == 'male' else int(1)
+        self.label = 0 if rowData[0] == 'male' else 1
         self.description = rowData[2]
         self.link_color = rowData[3]
         self.name = rowData[4]
