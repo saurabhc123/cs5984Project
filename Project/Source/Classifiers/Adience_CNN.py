@@ -16,6 +16,8 @@ import random
 import MainClassifier
 import Placeholders
 
+from Classifiers import RNNClassifier
+
 current_working_folder = os.path.dirname(os.getcwd())
 
 metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/')
@@ -254,5 +256,6 @@ with tf.Session() as sess:
     print (fc7rep, fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
-        MainClassifier.train(sess,None, True, fc7)
+        RNNClassifier.train(sess, None, True, fc7)
+        #MainClassifier.train(sess,None, True, fc7)
 

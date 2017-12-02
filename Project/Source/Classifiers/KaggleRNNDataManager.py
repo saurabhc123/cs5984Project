@@ -116,7 +116,7 @@ class KaggleRNNDataSet(object):
         features_to_scale = self.features[:,index : index + Placeholders.profile_color_feature_length]
         normalized_features = np.hstack((normalized_features, preprocessing.scale(features_to_scale)))
         index = normalized_features.shape[1]
-        normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.word_vec_length])))
+        normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.text_feature_length])))
         normalized_features = np.hstack((normalized_features, self.labels))
         return normalized_features
 
@@ -157,20 +157,19 @@ class KaggleRNNSample(object):
     def get_feature_from_sample(self):
         features = np.array([]).reshape((1, 0))
         fc7_x = self.get_fc7_representation(self.get_image_data())
-        desc_word_vector = self.word_vec.get_sentence_vector(self.description)
-        tweet_word_vector = self.word_vec.get_sentence_vector(self.tweet_text)
+        text_word_vector = self.word_vec.get_sentence_vector_ex(self.description + ' ' + self.tweet_text)
+        #print(text_word_vector.shape)
         sidebar_feature = self.hex_to_rgb(self.sidebar_color)
         link_color_feature = self.hex_to_rgb(self.link_color)
-        features = self.compose_features(desc_word_vector, fc7_x, features, link_color_feature, sidebar_feature,
-                                         tweet_word_vector)
+        features = self.compose_features(fc7_x, features, link_color_feature, sidebar_feature,
+                                         text_word_vector)
         return features
 
-    def compose_features(self, desc_word_vector, fc7_x, features, link_color_feature, sidebar_feature, tweet_word_vector):
+    def compose_features(self, fc7_x, features, link_color_feature, sidebar_feature, text_word_vector):
         features = np.hstack((features, fc7_x))
         features = np.hstack((features, sidebar_feature))
         features = np.hstack((features, link_color_feature))
-        features = np.hstack((features, desc_word_vector))
-        features = np.hstack((features, tweet_word_vector))
+        features = np.hstack((features, text_word_vector))
         features = features.reshape(-1, Placeholders.feature_width)
         return features
 

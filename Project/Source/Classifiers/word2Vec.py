@@ -5,6 +5,7 @@ import string
 
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+import Placeholders
 
 
 
@@ -90,6 +91,41 @@ class word2vec:
             featureVec = np.divide(featureVec, nwords)
         return featureVec
 
+    def get_sentence_matrix(self, sentence):
+        sentence_matrix = []
+        featureVec = np.zeros((1,300))
+        nwords = 0
+        clean_sentence = self.clean_sent(self.wordnet_lemmatizer, sentence)
+        model = self.get_model()
+        words = clean_sentence.rstrip().split(" ")
+        if(len(words) == 0):
+            return sentence_matrix
+        for word in words:
+            try:
+                word_vector = model[word]
+                nwords += 1
+                #print word_vector
+                sentence_matrix.append(word_vector)
+            except:
+                pass #Swallow exception
+        padded_sentence_matrix = self.getPaddedSentenceMatrix(np.array(sentence_matrix))
+        return padded_sentence_matrix
+
+    def get_sentence_vector_ex(self, sentence):
+        try:
+            sentence_matrix = self.get_sentence_matrix(sentence)
+            return sentence_matrix.reshape((1, Placeholders.n_steps * Placeholders.n_inputs))
+        except:
+            print("Error with sentence:" + sentence)
+        return np.zeros((1, Placeholders.n_steps* Placeholders.n_inputs))
+
+    def getPaddedSentenceMatrix(self, sentenceMatrix):
+        wordCount = Placeholders.n_steps
+        #print(sentenceMatrix.shape)
+        return np.vstack((sentenceMatrix,
+                        np.zeros((wordCount - np.shape(sentenceMatrix)[0], np.shape(sentenceMatrix)[1]),
+                        dtype=np.float32)))
+
     def read_from_file(self, name, model):
         with open(name,"r") as f:
             lines = f.readlines()
@@ -116,14 +152,19 @@ class word2vec:
         return filter(lambda word: word not in self.stop, words)
 
 
-
-
+# sentence = "Gala Bingo clubs bought for 241m: The UK's largest High Street bingo operator, Gala, is being taken over by_ https://t.co/HzeeykJUd3"
+# wv = word2vec()
+# clean_sentence = wv.clean_sent(wv.wordnet_lemmatizer,sentence)
+# print(clean_sentence)
+# sentence_matrix = wv.get_sentence_matrix(clean_sentence)
+# model = word2vec().get_model()
 
 if __name__ == "__main__":
     sentence = "Gala Bingo clubs bought for 241m: The UK's largest High Street bingo operator, Gala, is being taken over by_ https://t.co/HzeeykJUd3"
     wv = word2vec()
     clean_sentence = wv.clean_sent(wv.wordnet_lemmatizer,sentence)
     print(clean_sentence)
+    sentence_matrix = wv.get_sentence_matrix(clean_sentence)
 
     model = word2vec().get_model()
     # you can find the terms that are similar to a list of words and different from
