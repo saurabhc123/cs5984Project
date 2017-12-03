@@ -40,6 +40,27 @@ run_folder = today.strftime(format)
 x_main = tf.placeholder(tf.float32, shape=[None, Placeholders.feature_width])
 keep_prob = tf.placeholder(tf.float32)
 
+train_loss_results = []
+test_loss_results = []
+validation_loss_results = []
+
+train_accuracy_results = []
+test_accuracy_results = []
+validation_accuracy_results = []
+
+train_precision_results = []
+test_precision_results = []
+validation_precision_results = []
+
+train_recall_results = []
+test_recall_results = []
+validation_recall_results = []
+
+train_f1_results = []
+test_f1_results = []
+validation_f1_results = []
+
+
 
 
 
@@ -120,9 +141,51 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
     recall = recall_score(f1_truelabels, f1_predictions, average='macro')
     print(datasetType + " Precision: {:.4}%".format(precision)+ " Recall: {:.4}%".format(recall)+ " F1: {:.4}%".format(f1score))
     raw_data = kdm.test_raw if datasetType == "Test" else (kdm.train_raw if datasetType == "Train" else kdm.validation_raw)
-    write_results_to_file(mse, acc * 100, raw_data, predictions, correct_predictions, epoch, datasetType)
+    compose_metrics(datasetType, mse, acc * 100, precision, recall, f1score)
+    write_results_to_file(mse, acc * 100, raw_data, predictions, correct_predictions, epoch, datasetType,f1score, precision, recall)
     return acc*100
 
+def compose_metrics(datasetType, mse, accuracy, precision, recall, f1score):
+    if datasetType == 'Train':
+        train_loss_results.append(mse)
+        train_accuracy_results.append(accuracy)
+        train_precision_results.append(precision)
+        train_recall_results.append(recall)
+        train_f1_results.append(f1score)
+    elif datasetType == 'Validation':
+        validation_loss_results.append(mse)
+        validation_accuracy_results.append(accuracy)
+        validation_precision_results.append(precision)
+        validation_recall_results.append(recall)
+        validation_f1_results.append(f1score)
+    else:
+        test_loss_results.append(mse)
+        test_accuracy_results.append(accuracy)
+        test_precision_results.append(precision)
+        test_recall_results.append(recall)
+        test_f1_results.append(f1score)
+
+def write_metrics(datasetType, wr):
+    if datasetType == 'Train':
+        wr.writerow(train_loss_results)
+        wr.writerow(train_accuracy_results)
+        wr.writerow(train_precision_results)
+        wr.writerow(train_recall_results)
+        wr.writerow(train_f1_results)
+    elif datasetType == 'Validation':
+        wr.writerow(validation_loss_results)
+        wr.writerow(validation_accuracy_results)
+        wr.writerow(validation_precision_results)
+        wr.writerow(validation_recall_results)
+        wr.writerow(validation_f1_results)
+    else:
+        wr.writerow(test_loss_results)
+        wr.writerow(test_accuracy_results)
+        wr.writerow(test_precision_results)
+        wr.writerow(test_recall_results)
+        wr.writerow(test_f1_results)
+
+# Do the default
 
 def train(sess, train, retrain, fc7):
     output_folder = os.path.join(current_working_folder,"Project/output")
@@ -142,31 +205,26 @@ def train(sess, train, retrain, fc7):
         outputs, states = tf.nn.dynamic_rnn(gru_cell, Placeholders.rnn_X, dtype=tf.float32)
 
     all_features = tf.concat([states, Placeholders.rnn_other_features], 1)
-    y_conv = tf.layers.dense(all_features, Placeholders.n_classes, activation=tf.nn.elu)
-    #xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels= Placeholders.y_ , logits= logits)
-    #loss = tf.reduce_mean(xentropy)
-    #optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    #optimizer = tf.train.RMSPropOptimizer(0.1, 0.9, 0.01)
-    #training_op = optimizer.minimize(loss)
-    #correct = tf.nn.in_top_k(logits, Placeholders.y_, 1)
 
-
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
+    hidden = tf.layers.dense(all_features, Placeholders.num_of_units, activation=tf.nn.relu)
+    fully_connected1_dropout = tf.nn.dropout(hidden, keep_prob=keep_prob)
+    output_layer = tf.layers.dense(fully_connected1_dropout, Placeholders.n_classes)
+    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= output_layer,
                                                                     labels=y_))
 
-    #cross_entropy = tf.reduce_mean(tf.square(tf.argmax(y_conv, 1) - tf.argmax(y_, 1)))
     loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
+    #train_step = tf.train.AdadeltaOptimizer(1e-1).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
     #train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(loss)
 
-    correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
+    correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
     #correct_prediction = tf.nn.in_top_k(tf.argmax(y_conv, 1), tf.argmax(Placeholders.y_, 1), 1)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 300
+    STEPS = 500
     MINIBATCH_SIZE = 50
 
     #Retrieve training data
@@ -202,7 +260,7 @@ def train(sess, train, retrain, fc7):
                 sess.run(train_step, feed_dict={Placeholders.rnn_X: rnn_features,
                                                 Placeholders.rnn_other_features : other_features,
                                                 y_: labels,
-                                                keep_prob: 0.5})
+                                                keep_prob: 0.3})
                 # acc = sess.run(accuracy, feed_dict={Placeholders.rnn_X: rnn_features,
                 #                                 Placeholders.rnn_other_features : other_features,
                 #                                 y_: labels,
@@ -215,15 +273,16 @@ def train(sess, train, retrain, fc7):
                                             keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch, datasetType="Train")
-                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch, datasetType="Validation")
+                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Train")
+                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Validation")
                 #test_accuracy = test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Test")
                 if (validation_accuracy > Placeholders.best_accuracy_so_far):
                     Placeholders.best_accuracy_so_far = validation_accuracy
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch)
+                    test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch)
                 elif (train_accuracy > 70):
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, kdm, epoch)
-        test_all(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, kdm)
+                    test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch)
+                np.random.shuffle(kdm.train.features)
+        test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
     return accuracy
@@ -235,7 +294,7 @@ def one_hot(vec, vals = Placeholders.n_classes):
     out[range(n), vec] = 1
     return out
 
-def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_predictions, epoch, datasetType):
+def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_predictions, epoch, datasetType, f1score = 0.0, precision = 0.0, recall = 0.0):
     today = datetime.datetime.now()
     format = "_%d_%m_%Y_%H_%M_%S"
     filename = "output/" + run_folder + "/" + datasetType + today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
@@ -243,6 +302,10 @@ def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_pr
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
         wr.writerow(["Loss = " + str(loss)])
+        wr.writerow(["Precision = " + str(precision)])
+        wr.writerow(["Recall = " + str(recall)])
+        wr.writerow(["F1 = " + str(f1score)])
+        write_metrics(datasetType, wr)
         wr.writerow(get_header())
         for i in range(len(test_data_raw)):
             local_result = []
@@ -255,6 +318,7 @@ def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_pr
             local_result.append(predictions[i])
             local_result.append(correct_predictions[i])
             wr.writerow(local_result)
+
 
 def get_header():
     header = []
