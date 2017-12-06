@@ -113,6 +113,7 @@ class word2vec:
 
     def get_sentence_vector_ex(self, sentence):
         try:
+            #return np.zeros((1, Placeholders.n_steps * Placeholders.n_inputs))
             sentence_matrix = self.get_sentence_matrix(sentence)
             return sentence_matrix.reshape((1, Placeholders.n_steps * Placeholders.n_inputs))
         except:

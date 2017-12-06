@@ -1,9 +1,10 @@
 import tensorflow as tf
 
 n_classes = 2
-img_dim = 100
+img_dim = 48
 n_channels = 3
-img_feature_width = 512
+img_feature_width = 64
+num_of_units = 5
 n_inputs = 300  # word vector dimension
 n_steps = 100  # number of words fed to each RNN. We will feed the profile and tweet together
 word_vec_length = 600

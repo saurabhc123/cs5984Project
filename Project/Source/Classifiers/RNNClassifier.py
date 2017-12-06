@@ -213,12 +213,9 @@ def train(sess, train, retrain, fc7):
                                                                     labels=y_))
 
     loss = tf.reduce_mean(cross_entropy)
-    #train_step = tf.train.AdadeltaOptimizer(1e-1).minimize(loss)
     train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
-    #train_step = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
-    #correct_prediction = tf.nn.in_top_k(tf.argmax(y_conv, 1), tf.argmax(Placeholders.y_, 1), 1)
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     # Add ops to save and restore all the variables.
@@ -227,9 +224,6 @@ def train(sess, train, retrain, fc7):
     STEPS = 500
     MINIBATCH_SIZE = 50
 
-    #Retrieve training data
-
-    #training_data = get_fc7_representation(train, sess, fc7)
 
     if os.path.exists(model_folder_name) & (not retrain):
         print("Model found in file: %s" % model_filename)
@@ -247,9 +241,6 @@ def train(sess, train, retrain, fc7):
                 features = batch[0][:,:Placeholders.feature_width]
                 #print(batch[0][:,Placeholders.feature_width])
                 labels = one_hot(batch[0][:,Placeholders.feature_width])
-                #print("Features shape:")
-                #print(features.shape)
-                #print(labels.shape)
                 batch_x = features
                 #print("RNN features shape:")
                 rnn_features = np.array(features[:, Placeholders.img_feature_width + Placeholders.profile_color_feature_length:])\
@@ -260,12 +251,7 @@ def train(sess, train, retrain, fc7):
                 sess.run(train_step, feed_dict={Placeholders.rnn_X: rnn_features,
                                                 Placeholders.rnn_other_features : other_features,
                                                 y_: labels,
-                                                keep_prob: 0.3})
-                # acc = sess.run(accuracy, feed_dict={Placeholders.rnn_X: rnn_features,
-                #                                 Placeholders.rnn_other_features : other_features,
-                #                                 y_: labels,
-                #                                 keep_prob: 1.0})
-                # print ("Accuracy: {:.4}%".format(acc * 100))
+                                                keep_prob: 0.7})
             if(epoch%10 == 0):
                 mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
                                             Placeholders.rnn_other_features : other_features,
@@ -275,7 +261,6 @@ def train(sess, train, retrain, fc7):
                       "{:.6f}".format(mse))
                 train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Train")
                 validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Validation")
-                #test_accuracy = test(sess, accuracy, kdm.test, fc7, word_vec, y_conv, correct_prediction, loss, epoch, datasetType="Test")
                 if (validation_accuracy > Placeholders.best_accuracy_so_far):
                     Placeholders.best_accuracy_so_far = validation_accuracy
                     test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch)
