@@ -5,6 +5,12 @@ __pycache__/
 
 Project/models/adience
 Project/Datasets/Kaggle/*.gz
+Project/Datasets/Kaggle/Images-old
+Project/Datasets/Kaggle/Images
+Project/Datasets/Kaggle/*.zip
+Project/Datasets/Kaggle/ProfileImages 2
+Project/Datasets/Kaggle/Images/*.jpg
+Project/Datasets/Kaggle/Images/*.jpeg
 Project/models/adience/adience_model.*
 
 
