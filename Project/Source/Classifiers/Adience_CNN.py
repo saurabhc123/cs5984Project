@@ -16,7 +16,7 @@ import random
 import MainClassifier
 import Placeholders
 
-from Classifiers import GRUClassifier
+import LSTMClassifier as classifier
 
 current_working_folder = os.path.dirname(os.getcwd())
 
@@ -254,6 +254,5 @@ with tf.Session() as sess:
     print (fc7rep, fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
-        GRUClassifier.train(sess, None, True, fc7)
-        #MainClassifier.train(sess,None, True, fc7)
+        classifier.train(sess, None, True, fc7)
 
