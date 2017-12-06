@@ -150,7 +150,7 @@ class KaggleSample(object):
 
     def get_fc7_representation(self, sample):
         image = np.array(sample).reshape((-1, Placeholders.img_dim, Placeholders.img_dim, Placeholders.n_channels))
-        fc7rep = self.sess.run(self.fc7, feed_dict={x: image})
+        fc7rep = self.sess.run(self.fc7, feed_dict={x: image, Placeholders.adience_keep_prob: 1.0})
         return np.array(fc7rep)
 
 

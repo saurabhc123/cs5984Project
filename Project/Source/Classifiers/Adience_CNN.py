@@ -16,7 +16,8 @@ import random
 import MainClassifier
 import Placeholders
 
-import LSTMClassifier as classifier
+import LSTMClassifier
+import GRUClassifier
 
 current_working_folder = os.path.dirname(os.getcwd())
 
@@ -185,7 +186,7 @@ def test(sess, accuracy):
 def get_fc7_representation(sample, sess, fc7):
     image = np.array(sample).reshape((1, Placeholders.img_dim, Placeholders.img_dim, n_channels))
     print (image.shape)
-    fc7rep = sess.run(fc7, feed_dict= {x : image})
+    fc7rep = sess.run(fc7, feed_dict= {x : image , keep_prob: 1.0})
     return fc7rep
 
 def train(sess, adience, retrain = False):
@@ -202,13 +203,15 @@ def train(sess, adience, retrain = False):
 
     with tf.variable_scope("FC-7"):
         full_1 = tf.nn.relu(ConvHelper.full_layer(conv3_flat, Placeholders.img_feature_width))
-        fc7layer = tf.nn.relu(ConvHelper.full_layer(full_1, Placeholders.img_feature_width))
+        fully_connected1_dropout = tf.nn.dropout(full_1, keep_prob=keep_prob)
+        fc7layer = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout, Placeholders.img_feature_width))
+        fully_connected2_dropout = tf.nn.dropout(fc7layer, keep_prob=keep_prob)
 
-    y_conv = ConvHelper.full_layer(fc7layer, Placeholders.n_classes)
+    y_conv = ConvHelper.full_layer(fully_connected2_dropout, Placeholders.n_classes)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
                                                                    labels=y_))
     loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -216,7 +219,7 @@ def train(sess, adience, retrain = False):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 5
+    STEPS = 300
     MINIBATCH_SIZE = 20
 
     if os.path.exists(model_folder_name) & (not retrain):
@@ -232,7 +235,7 @@ def train(sess, adience, retrain = False):
             print ("Starting epoch", epoch, " at:", datetime.datetime.now())
             for batch_count in range(int(len(adience.train.images)/MINIBATCH_SIZE)):
                 batch = adience.train.next_batch(MINIBATCH_SIZE)
-                sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 1.0})
+                sess.run(train_step, feed_dict={x: batch[0], y_: batch[1],keep_prob: 0.5})
             if(epoch%10 == 0):
                 test_on_train(sess, accuracy, loss)
                 validate(sess, accuracy)
@@ -245,14 +248,14 @@ adience = AdienceDataManager()
 x = Placeholders.x
 y_ = Placeholders.y_
 
-keep_prob = tf.placeholder(tf.float32)
+keep_prob = Placeholders.adience_keep_prob
 with tf.Session() as sess:
-    accuracy, fc7 = train(sess, adience, retrain=False)
+    accuracy, fc7 = train(sess, adience, retrain=True)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,Placeholders.img_dim, Placeholders.img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
     print (fc7rep, fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
-        classifier.train(sess, None, True, fc7)
+        LSTMClassifier.train(sess, None, True, fc7)
 
