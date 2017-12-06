@@ -143,10 +143,10 @@ class KaggleRNNSample(object):
     def get_image_data(self):
         file_name = self.profile_image.split('/')[-1]
         file_extension = file_name.split('.')[-1]
-        full_file_name = os.path.join(kaggle_images_path,'downsampled_' + self.name + '.'+ file_extension)
+        full_file_name = os.path.join(kaggle_images_path, self.name + '.'+ file_extension)
         image_data = plt.imread(full_file_name, format=file_extension)
         #image_data = image_data.astype(float) / 255
-        return image_data
+        return image_data[:,:,:3]
 
     def get_fc7_representation(self, sample):
         image = np.array(sample).reshape((-1, Placeholders.img_dim, Placeholders.img_dim, Placeholders.n_channels))
@@ -157,7 +157,11 @@ class KaggleRNNSample(object):
 
     def get_feature_from_sample(self):
         features = np.array([]).reshape((1, 0))
-        fc7_x = self.get_fc7_representation(self.get_image_data())
+        fc7_x = np.zeros((1,Placeholders.img_feature_width))
+        try:
+            fc7_x = self.get_fc7_representation(self.get_image_data())
+        except:
+            print("Bad Image data for:" + self.name)
         text_word_vector = self.word_vec.get_sentence_vector_ex(self.description + ' ' + self.tweet_text)
         #print(text_word_vector.shape)
         sidebar_feature = self.hex_to_rgb(self.sidebar_color)

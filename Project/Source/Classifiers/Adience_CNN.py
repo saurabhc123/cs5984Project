@@ -16,20 +16,18 @@ import random
 import MainClassifier
 import Placeholders
 
-from Classifiers import RNNClassifier
+from Classifiers import GRUClassifier
 
 current_working_folder = os.path.dirname(os.getcwd())
 
 metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/')
-train_metadata_filename = 'downsampled_gender_train.txt'
-test_metadata_filename = 'downsampled_gender_train.txt'
+train_metadata_filename = 'downsampled48_gender_train.txt'
+test_metadata_filename = 'downsampled48_gender_train.txt'
 image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/aligned/')
 model_folder_name = "models/adience"
 model_filename = os.path.join(model_folder_name,"adience_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
-n_classes = 2
-img_dim = 100
 n_channels = 3
 
 class AdienceLoader(object):
@@ -48,9 +46,9 @@ class AdienceLoader(object):
         #plt.show()
         #display_image(images[0:4],2)
         n = len(images)
-        self.images = images.reshape(n, n_channels, img_dim, img_dim).transpose(0, 2, 3, 1)\
+        self.images = images.reshape(n, n_channels, Placeholders.img_dim, Placeholders.img_dim).transpose(0, 2, 3, 1)\
                           .astype(float) / 255
-        self.labels = one_hot(np.hstack([d for d in self.labels]), n_classes)
+        self.labels = one_hot(np.hstack([d for d in self.labels]), Placeholders.n_classes)
         return self
 
     def next_batch(self, batch_size):
@@ -72,7 +70,7 @@ class AdienceDataManager(object):
         print("Test data size:" + str(len(test_labels)))
 
 
-def one_hot(vec, vals=n_classes):
+def one_hot(vec, vals=Placeholders.n_classes):
     n = len(vec)
     out = np.zeros((n, vals))
     out[range(n), vec] = 1
@@ -148,8 +146,8 @@ def perform_evaluation(X, Y, accuracy, sess, test_type, loss = None):
     x_total = X[:total_samples]
     y_total = Y[:total_samples]
 
-    X = x_total.reshape(number_of_test_batches, number_of_samples_per_batch, img_dim, img_dim, n_channels)
-    Y = y_total.reshape(number_of_test_batches, number_of_samples_per_batch, n_classes)
+    X = x_total.reshape(number_of_test_batches, number_of_samples_per_batch, Placeholders.img_dim, Placeholders.img_dim, n_channels)
+    Y = y_total.reshape(number_of_test_batches, number_of_samples_per_batch, Placeholders.n_classes)
     acc = np.mean([sess.run(accuracy, feed_dict={x: X[i], y_: Y[i],
                                                  keep_prob: 1.0})
                    for i in range(number_of_test_batches)])
@@ -185,7 +183,7 @@ def test(sess, accuracy):
     perform_evaluation(X, Y, accuracy, sess, "Test")
 
 def get_fc7_representation(sample, sess, fc7):
-    image = np.array(sample).reshape((1,img_dim,img_dim,n_channels))
+    image = np.array(sample).reshape((1, Placeholders.img_dim, Placeholders.img_dim, n_channels))
     print (image.shape)
     fc7rep = sess.run(fc7, feed_dict= {x : image})
     return fc7rep
@@ -200,13 +198,13 @@ def train(sess, adience, retrain = False):
     conv3 = ConvHelper.conv_layer(conv2_pool, shape=[3, 3, 256, 384])
     conv3_pool = ConvHelper.max_pool_2x2(conv3)
     print (conv3_pool)
-    conv3_flat = tf.reshape(conv3_pool, [-1, 7 * 7 * 384])
+    conv3_flat = tf.reshape(conv3_pool, [-1, 3 * 3 * 384])
 
     with tf.variable_scope("FC-7"):
-        full_1 = tf.nn.relu(ConvHelper.full_layer(conv3_flat, 512))
-        fc7layer = tf.nn.relu(ConvHelper.full_layer(full_1, 512))
+        full_1 = tf.nn.relu(ConvHelper.full_layer(conv3_flat, Placeholders.img_feature_width))
+        fc7layer = tf.nn.relu(ConvHelper.full_layer(full_1, Placeholders.img_feature_width))
 
-    y_conv = ConvHelper.full_layer(fc7layer, n_classes)
+    y_conv = ConvHelper.full_layer(fc7layer, Placeholders.n_classes)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
                                                                    labels=y_))
     loss = tf.reduce_mean(cross_entropy)
@@ -218,7 +216,7 @@ def train(sess, adience, retrain = False):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 500
+    STEPS = 5
     MINIBATCH_SIZE = 20
 
     if os.path.exists(model_folder_name) & (not retrain):
@@ -250,12 +248,12 @@ y_ = Placeholders.y_
 keep_prob = tf.placeholder(tf.float32)
 with tf.Session() as sess:
     accuracy, fc7 = train(sess, adience, retrain=False)
-    image = np.array(adience.train.next_batch(1)[0]).reshape((1,img_dim,img_dim,n_channels))
+    image = np.array(adience.train.next_batch(1)[0]).reshape((1,Placeholders.img_dim, Placeholders.img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
     print (fc7rep, fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
-        RNNClassifier.train(sess, None, True, fc7)
+        GRUClassifier.train(sess, None, True, fc7)
         #MainClassifier.train(sess,None, True, fc7)
 
