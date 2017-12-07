@@ -200,9 +200,9 @@ def train(sess, train, retrain, fc7):
     kdm = KaggleRNNDataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
 
 
-    with tf.variable_scope("gru"):
-        gru_cell = tf.contrib.rnn.BasicLSTMCell(Placeholders.n_neurons, forget_bias = 1.0)
-        outputs, states = tf.nn.dynamic_rnn(gru_cell, Placeholders.rnn_X, dtype=tf.float32)
+    with tf.variable_scope("LSTM"):
+        lstm_cell = tf.contrib.rnn.BasicLSTMCell(Placeholders.n_neurons, forget_bias = 1.0)
+        outputs, states = tf.nn.dynamic_rnn(lstm_cell, Placeholders.rnn_X, dtype=tf.float32)
 
     all_features = tf.concat([states[-1], Placeholders.rnn_other_features], 1)
 
@@ -212,7 +212,7 @@ def train(sess, train, retrain, fc7):
                                                                     labels=y_))
 
     loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -246,7 +246,7 @@ def train(sess, train, retrain, fc7):
                 sess.run(train_step, feed_dict={Placeholders.rnn_X: rnn_features,
                                                 Placeholders.rnn_other_features : other_features,
                                                 y_: labels,
-                                                keep_prob: 0.7})
+                                                keep_prob: 0.75})
             if(epoch%10 == 0):
                 mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
                                             Placeholders.rnn_other_features : other_features,
@@ -280,8 +280,8 @@ def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_pr
     filename = "output/" + run_folder + "/" + datasetType + "_GRU_"+ today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
     with open(filename, 'wt') as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-        wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
         wr.writerow(["Loss = " + str(loss)])
+        wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
         wr.writerow(["Precision = " + str(precision)])
         wr.writerow(["Recall = " + str(recall)])
         wr.writerow(["F1 = " + str(f1score)])

@@ -280,8 +280,8 @@ def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_pr
     filename = "output/" + run_folder + "/" + datasetType + "_GRU_"+ today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
     with open(filename, 'wt') as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-        wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
         wr.writerow(["Loss = " + str(loss)])
+        wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
         wr.writerow(["Precision = " + str(precision)])
         wr.writerow(["Recall = " + str(recall)])
         wr.writerow(["F1 = " + str(f1score)])
