@@ -22,5 +22,5 @@ y_ = tf.placeholder(tf.int32, shape=[None, n_classes])
 
 rnn_X = tf.placeholder(tf.float32, [None, n_steps, n_inputs])
 rnn_other_features = tf.placeholder(tf.float32, shape=[None, img_feature_width + profile_color_feature_length])
-n_neurons = 10
+n_neurons = 2
 learning_rate = 0.01

@@ -255,8 +255,8 @@ with tf.Session() as sess:
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,Placeholders.img_dim, Placeholders.img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
-    print (fc7rep, fc7rep.shape)
+    print (fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
-        LSTMClassifier.train(sess, None, True, fc7)
+        GRUClassifier.train(sess, None, True, fc7)
 

@@ -206,13 +206,14 @@ def train(sess, train, retrain, fc7):
 
     all_features = tf.concat([states, Placeholders.rnn_other_features], 1)
 
-    fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    output_layer = tf.layers.dense(fully_connected1_dropout, Placeholders.n_classes)
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= output_layer,
+
+    output_layer = tf.layers.dense(all_features, Placeholders.n_classes)
+    fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
+    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= fully_connected1_dropout,
                                                                     labels=y_))
 
     loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -246,7 +247,7 @@ def train(sess, train, retrain, fc7):
                 sess.run(train_step, feed_dict={Placeholders.rnn_X: rnn_features,
                                                 Placeholders.rnn_other_features : other_features,
                                                 y_: labels,
-                                                keep_prob: 0.7})
+                                                keep_prob: 0.75})
             if(epoch%10 == 0):
                 mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
                                             Placeholders.rnn_other_features : other_features,

@@ -206,9 +206,10 @@ def train(sess, train, retrain, fc7):
 
     all_features = tf.concat([states[-1], Placeholders.rnn_other_features], 1)
 
-    fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    output_layer = tf.layers.dense(fully_connected1_dropout, Placeholders.n_classes)
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= output_layer,
+    #fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
+    output_layer = tf.layers.dense(all_features, Placeholders.n_classes)
+    fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
+    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= fully_connected1_dropout,
                                                                     labels=y_))
 
     loss = tf.reduce_mean(cross_entropy)
@@ -277,7 +278,7 @@ def one_hot(vec, vals = Placeholders.n_classes):
 def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_predictions, epoch, datasetType, f1score = 0.0, precision = 0.0, recall = 0.0):
     today = datetime.datetime.now()
     format = "_%d_%m_%Y_%H_%M_%S"
-    filename = "output/" + run_folder + "/" + datasetType + "_GRU_"+ today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
+    filename = "output/" + run_folder + "/" + datasetType + "_LSTM_"+ today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
     with open(filename, 'wt') as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow(["Loss = " + str(loss)])
