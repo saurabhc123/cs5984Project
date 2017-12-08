@@ -18,6 +18,7 @@ import Placeholders
 
 import LSTMClassifier
 import GRUClassifier
+import ImageClassifier
 
 current_working_folder = os.path.dirname(os.getcwd())
 
@@ -258,5 +259,5 @@ with tf.Session() as sess:
     print (fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
-        LSTMClassifier.train(sess, None, True, fc7)
+        ImageClassifier.train(sess, None, True, fc7)
 
