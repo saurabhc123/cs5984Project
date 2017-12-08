@@ -112,11 +112,6 @@ class KaggleRNNDataSet(object):
 
         index = 0
         normalized_features = np.array([]).reshape((len(self.features), 0))
-        normalized_features =  np.hstack((normalized_features, preprocessing.scale(self.features[:,index : Placeholders.img_feature_width])))
-        index = normalized_features.shape[1]
-        features_to_scale = self.features[:,index : index + Placeholders.profile_color_feature_length]
-        normalized_features = np.hstack((normalized_features, preprocessing.scale(features_to_scale)))
-        index = normalized_features.shape[1]
         normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.text_feature_length])))
         normalized_features = np.hstack((normalized_features, self.labels))
         return normalized_features
@@ -171,9 +166,9 @@ class KaggleRNNSample(object):
         return features
 
     def compose_features(self, fc7_x, features, link_color_feature, sidebar_feature, text_word_vector):
-        features = np.hstack((features, fc7_x))
-        features = np.hstack((features, sidebar_feature))
-        features = np.hstack((features, link_color_feature))
+        #features = np.hstack((features, fc7_x))
+        #features = np.hstack((features, sidebar_feature))
+        #features = np.hstack((features, link_color_feature))
         features = np.hstack((features, text_word_vector))
         features = features.reshape(-1, Placeholders.feature_width)
         return features
