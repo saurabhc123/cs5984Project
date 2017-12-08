@@ -23,5 +23,5 @@ y_ = tf.placeholder(tf.int32, shape=[None, n_classes])
 
 rnn_X = tf.placeholder(tf.float32, [None, n_steps, n_inputs])
 rnn_other_features = tf.placeholder(tf.float32, shape=[None,0])
-n_neurons = 50
+n_neurons = 300
 learning_rate = 0.01

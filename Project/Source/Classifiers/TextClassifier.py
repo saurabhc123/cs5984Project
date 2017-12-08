@@ -217,7 +217,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 1000
+    STEPS = 300
     MINIBATCH_SIZE = 50
 
 
