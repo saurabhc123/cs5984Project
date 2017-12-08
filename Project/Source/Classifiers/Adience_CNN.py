@@ -258,5 +258,5 @@ with tf.Session() as sess:
     print (fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("main_classifier"):
-        GRUClassifier.train(sess, None, True, fc7)
+        LSTMClassifier.train(sess, None, True, fc7)
 

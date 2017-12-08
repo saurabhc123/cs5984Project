@@ -69,7 +69,8 @@ class word2vec:
 
     def get_word_vector(self, word):
         model = self.get_model()
-        return model[word]
+        vec = model[word]
+        return vec[0:Placeholders.n_inputs]
 
     def get_sentence_vector(self, sentence):
         featureVec = np.zeros((1,300))
@@ -102,7 +103,7 @@ class word2vec:
             return sentence_matrix
         for word in words:
             try:
-                word_vector = model[word]
+                word_vector = self.get_word_vector(word)
                 nwords += 1
                 #print word_vector
                 sentence_matrix.append(word_vector)

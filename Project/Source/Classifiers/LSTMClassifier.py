@@ -213,7 +213,7 @@ def train(sess, train, retrain, fc7):
                                                                     labels=y_))
 
     loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -221,7 +221,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 500
+    STEPS = 1000
     MINIBATCH_SIZE = 50
 
 
