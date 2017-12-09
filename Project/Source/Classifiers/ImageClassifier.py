@@ -12,8 +12,8 @@ import csv as csv
 import datetime
 import os as os
 import random
-import Placeholders
-import KaggleRNNDataManager
+import ImagePlaceholders as Placeholders
+import ImageDataManager as DataManager
 import word2Vec as w2v
 from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
@@ -21,7 +21,7 @@ from sklearn.metrics import recall_score
 
 
 model_folder_name = "models/adience"
-model_filename = os.path.join(model_folder_name,"main_model.ckpt")
+model_filename = os.path.join(model_folder_name,"image_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 
@@ -187,7 +187,7 @@ def write_metrics(datasetType, wr):
 
 # Do the default
 
-def train(sess, train, retrain, fc7):
+def train(sess, retrain, fc7):
     output_folder = os.path.join(current_working_folder,"Project/output")
     output_folder = os.path.join(output_folder, run_folder)
     if not os.path.exists(output_folder):
@@ -197,28 +197,27 @@ def train(sess, train, retrain, fc7):
         print("Folder exists: " + output_folder)
 
     word_vec = w2v.word2vec()
-    kdm = KaggleRNNDataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
+    kdm = DataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
 
 
 
     all_features = Placeholders.rnn_other_features
 
     fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    output_layer = tf.layers.dense(fully_connected1_dropout, Placeholders.n_classes)
+    logits = tf.layers.dense(fully_connected1_dropout, Placeholders.n_classes)
     #fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= output_layer,
-                                                                    labels=y_))
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits= logits, labels=y_)
 
     loss = tf.reduce_mean(cross_entropy)
     train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
 
-    correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
+    correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 2000
+    STEPS = 5
     MINIBATCH_SIZE = 50
 
 
@@ -252,18 +251,18 @@ def train(sess, train, retrain, fc7):
                                             keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Train")
-                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Validation")
+                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch, datasetType="Train")
+                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch, datasetType="Validation")
                 if (validation_accuracy > Placeholders.best_accuracy_so_far):
                     Placeholders.best_accuracy_so_far = validation_accuracy
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch)
+                    test_all(sess, accuracy, kdm.test, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch)
                 elif (train_accuracy > 70):
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch)
+                    test_all(sess, accuracy, kdm.test, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch)
                 np.random.shuffle(kdm.train.features)
-        test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm)
+        test_all(sess, accuracy, kdm.test, fc7, word_vec, logits, correct_prediction, loss, kdm)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return accuracy
+    return sess , logits
 
 def one_hot(vec, vals = Placeholders.n_classes):
     n = len(vec)

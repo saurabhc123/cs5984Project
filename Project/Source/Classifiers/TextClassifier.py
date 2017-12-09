@@ -21,7 +21,7 @@ from sklearn.metrics import recall_score
 
 
 model_folder_name = "models/adience"
-model_filename = os.path.join(model_folder_name,"main_model.ckpt")
+model_filename = os.path.join(model_folder_name,"text_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 
@@ -204,8 +204,8 @@ def train(sess, train, retrain, fc7):
 
     #fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
     output_layer = tf.layers.dense(all_features, Placeholders.n_classes)
-    fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= fully_connected1_dropout,
+    logits = tf.nn.dropout(output_layer, keep_prob=keep_prob)
+    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= logits,
                                                                     labels=y_))
 
     loss = tf.reduce_mean(cross_entropy)
@@ -217,7 +217,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 300
+    STEPS = 5
     MINIBATCH_SIZE = 50
 
 
@@ -260,7 +260,7 @@ def train(sess, train, retrain, fc7):
         test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return accuracy
+    return logits
 
 def one_hot(vec, vals = Placeholders.n_classes):
     n = len(vec)
