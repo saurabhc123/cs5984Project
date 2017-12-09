@@ -8,12 +8,10 @@ img_feature_width = 0
 num_of_units = 5
 n_inputs = 20  # word vector dimension
 n_steps = 80  # number of words fed to each RNN. We will feed the profile and tweet together
-
 text_feature_length = n_steps * n_inputs
 profile_color_feature_length = 0
-feature_width = img_feature_width + text_feature_length + profile_color_feature_length
-
-
+#feature_width = img_feature_width + text_feature_length + profile_color_feature_length
+feature_width = text_feature_length
 adience_keep_prob = tf.placeholder(tf.float32)
 
 
