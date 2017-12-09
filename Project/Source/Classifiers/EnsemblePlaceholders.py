@@ -15,7 +15,7 @@ feature_width = img_feature_width + text_feature_length + profile_color_feature_
 other_features_width = img_feature_width  + profile_color_feature_length
 ensemble_feature_length = 4
 
-adience_keep_prob = tf.placeholder(tf.float32)
+
 
 
 best_accuracy_so_far = 0.0

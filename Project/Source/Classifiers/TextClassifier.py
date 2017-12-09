@@ -40,7 +40,7 @@ run_folder = today.strftime(format)
 
 
 x_main = tf.placeholder(tf.float32, shape=[None, TextClassifierPlaceholders.feature_width])
-keep_prob = tf.placeholder(tf.float32)
+keep_prob = Placeholders.keep_prob
 
 train_loss_results = []
 test_loss_results = []
