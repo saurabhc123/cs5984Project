@@ -30,7 +30,7 @@ model_filename = os.path.join(model_folder_name,"adience_model.ckpt")
 
 
 metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/')
-image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/ProfileImages')
+image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/Images/')
 train_metadata_filename = 'Kaggle-str-process.csv'
 serialized_train_metadata_filename = 'KaggleTwitter.json'
 test_metadata_filename = 'Kaggle-str-process.csv'
@@ -40,38 +40,38 @@ MINIBATCH_SIZE = 100
 n_channels = 3
 
 class KaggleLoader(object):
-    def __init__(self, source_files, labels):
-        self._source = source_files
+    def __init__(self, images, labels):
         self._i = 0
-        self.images = None
-        self.labels = labels
+        self.images = np.array(images)
+        self.labels = np.array(labels)
+        self.labels = one_hot(np.hstack([d for d in self.labels]), Placeholders.n_classes)
 
     def load(self):
-        data = self._source
-        imgs = [image_files_path + '/' + d + '.jpg' for d in self._source]
-        images = np.asarray([plt.imread(fname, format='jpg') for fname in imgs])
-        n = len(images)
-        self.images = images.reshape(n, n_channels, Placeholders.img_dim, Placeholders.img_dim).transpose(0, 2, 3, 1)\
-                          .astype(float) / 255
+        self.images = self.data
         self.labels = one_hot(np.hstack([d for d in self.labels]), Placeholders.n_classes)
         return self
 
     def next_batch(self, batch_size):
         x, y = self.images[self._i:self._i+batch_size],self.labels[self._i:self._i+batch_size]
         self._i = (self._i + batch_size) % len(self.images)
-        return x, y
+        return x.reshape(batch_size,Placeholders.img_dim, Placeholders.img_dim, n_channels) , y.reshape(batch_size,Placeholders.n_classes)
 
 class KaggleImageDataManager(object):
     def __init__(self):
         self.data = []
-        train_data_image_filenames , train_labels = self.load_data(metadata_files_path + train_metadata_filename)
-        train_d, test_d, train_labels, test_labels = train_test_split(train_data_image_filenames, train_labels, test_size=0.3, random_state= random.randint(0,100) )
-        test_d, validation_d, test_labels, validation_labels = train_test_split(test_d, test_labels, test_size=0.5, random_state = random.randint(0,100) )
-        self.train = KaggleLoader(train_d, train_labels).load()
-        print("Training data size:" + str(len(train_labels)))
-        self.test = KaggleLoader(test_d, test_labels).load()
-        self.validation = KaggleLoader(validation_d, validation_labels).load()
-        print("Test data size:" + str(len(test_labels)))
+        images , labels = self.load_data(metadata_files_path + train_metadata_filename)
+        #self.test = KaggleLoader(test_d, test_labels).load()
+        total_samples = len(images)
+        train_end_index = int(total_samples * 0.8)
+        self.train = KaggleLoader(images[0:train_end_index], labels[0:train_end_index])
+        self.validation = KaggleLoader(images[train_end_index:-1], labels[train_end_index:-1])
+        #train_d, train_labels = self.train
+        #validation_d,validation_labels = self.validation
+        # self.train = KaggleLoader(train_d, train_labels).load()
+        print("Training data size:" + str(train_end_index))
+        #self.test = KaggleLoader(test_d, test_labels).load()
+        #self.validation = KaggleLoader(validation_d, validation_labels).load()
+        print("Test data size:" + str(total_samples - train_end_index))
 
     def load_data(self, inputFilenameWithPath):
         data = []
@@ -81,21 +81,54 @@ class KaggleImageDataManager(object):
             next(reader)  # skip header row
             for row in reader:
                 try:
-                    data.append(self.get_image_data(row[5], row[4]))
+                    self.get_image_data(row[5], row[4])
+                    data.append(self.get_image_file(row[5], row[4]))
                     labels.append(int(0) if row[0] == 'male' else int(1))
                 except Exception as ex:
                     print(ex)
-                    print("Omitting:", row[4])
+                    #print("Omitting:", row[4])
                     pass
-
+        images = np.asarray([plt.imread(fname[0], fname[1]) for fname in data])
+        n = len(images)
+        images = images.reshape(n, n_channels, Placeholders.img_dim, Placeholders.img_dim).transpose(0, 2, 3, 1) \
+                          .astype(float) / 255
         return data , labels
+
+    def load_data1(self, inputFilenameWithPath):
+        data = []
+        labels = []
+        with open(inputFilenameWithPath, 'rt') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            next(reader)  # skip header row
+            for row in reader:
+                try:
+                    self.get_image_data(row[5], row[4])
+                    data.append((row[5], row[4]))
+                    labels.append(int(0) if row[0] == 'male' else int(1))
+                except Exception as ex:
+                    print(ex)
+                    # print("Omitting:", row[4])
+                    pass
+        images = np.asarray([self.get_image_data(fname[0], fname[1]) for fname in data])
+        n = len(images)
+        images = images.reshape(n, n_channels, Placeholders.img_dim, Placeholders.img_dim).transpose(0, 2, 3, 1) \
+                          .astype(float) / 255
+        labels = one_hot(np.hstack([d for d in labels]), Placeholders.n_classes)
+
+        return images, labels
 
     def get_image_data(self, image_file, name):
         file_name = image_file.split('/')[-1]
         file_extension = file_name.split('.')[-1]
         full_file_name = os.path.join(image_files_path, name + '.' + file_extension)
         image_data = plt.imread(full_file_name, format=file_extension)
-        return image_data
+        return image_data[:,:,:n_channels]
+
+    def get_image_file(self, image_file, name):
+        file_name = image_file.split('/')[-1]
+        file_extension = file_name.split('.')[-1]
+        full_file_name = os.path.join(image_files_path, name + '.' + file_extension)
+        return full_file_name, file_extension
 
     def get_clean_kaggle_dataset(self):
         goodData = []
@@ -161,11 +194,11 @@ def validate(sess, accuracy):
     number_of_test_batches = 10
     number_of_samples_per_batch = 20
     total_samples = number_of_test_batches * number_of_samples_per_batch
-    random_index = random.randint(0,len(adience.validation.images) - total_samples)
+    random_index = random.randint(0, len(kaggle.validation.images) - total_samples)
 
     #print len(adience.test.images)
-    X = adience.validation.images
-    Y = adience.validation.labels
+    X = kaggle.validation.images
+    Y = kaggle.validation.labels
     perform_evaluation(X, Y, accuracy, sess, "Validation")
 
 
@@ -194,11 +227,11 @@ def test_on_train(sess, accuracy, loss):
     number_of_test_batches = 10
     number_of_samples_per_batch = 20
     total_samples = number_of_test_batches * number_of_samples_per_batch
-    random_index = random.randint(0,len(adience.test.images) - total_samples)
+
 
     #print len(adience.test.images)
-    X = adience.train.images
-    Y = adience.train.labels
+    X = kaggle.train.images
+    Y = kaggle.train.labels
     perform_evaluation(X, Y, accuracy, sess, "Training",loss)
 
 def test(sess, accuracy):
@@ -206,11 +239,11 @@ def test(sess, accuracy):
     number_of_test_batches = 10
     number_of_samples_per_batch = 20
     total_samples = number_of_test_batches * number_of_samples_per_batch
-    random_index = random.randint(0,len(adience.test.images) - total_samples)
+    random_index = random.randint(0, len(kaggle.test.images) - total_samples)
 
     #print len(adience.test.images)
-    X = adience.test.images
-    Y = adience.test.labels
+    X = kaggle.test.images
+    Y = kaggle.test.labels
     perform_evaluation(X, Y, accuracy, sess, "Test")
 
 def get_fc7_representation(sample, sess, fc7):
@@ -270,19 +303,19 @@ def train(sess, adience, retrain = False):
             if(epoch%10 == 0):
                 test_on_train(sess, accuracy, loss)
                 validate(sess, accuracy)
-        test(sess, accuracy)
+        #test(sess, accuracy)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
     return accuracy, fc7layer
 
-adience = KaggleImageDataManager()
+kaggle = KaggleImageDataManager()
 x = Placeholders.x
 y_ = Placeholders.y_
 
 keep_prob = Placeholders.adience_keep_prob
 with tf.Session() as sess:
-    accuracy, fc7 = train(sess, adience, retrain=True)
-    image = np.array(adience.train.next_batch(1)[0]).reshape((1,Placeholders.img_dim, Placeholders.img_dim,n_channels))
+    accuracy, fc7 = train(sess, kaggle, retrain=True)
+    image = np.array(kaggle.train.next_batch(1)[0]).reshape((1, Placeholders.img_dim, Placeholders.img_dim, n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
     print (fc7rep.shape)
