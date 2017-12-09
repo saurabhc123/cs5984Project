@@ -229,7 +229,7 @@ def train(sess, image_logits, text_logits, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 5
+    STEPS = 200
     MINIBATCH_SIZE = 50
 
 

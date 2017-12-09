@@ -219,7 +219,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 5
+    STEPS = 300
     MINIBATCH_SIZE = 50
 
 
@@ -274,7 +274,7 @@ def one_hot(vec, vals = TextClassifierPlaceholders.n_classes):
 def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_predictions, epoch, datasetType, f1score = 0.0, precision = 0.0, recall = 0.0):
     today = datetime.datetime.now()
     format = "_%d_%m_%Y_%H_%M_%S"
-    filename = "output/" + run_folder + "/" + datasetType + "_LSTM_"+ today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
+    filename = "output/" + run_folder + "/" + datasetType + "_Text_"+ today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
     with open(filename, 'wt') as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow(["Loss = " + str(loss)])
