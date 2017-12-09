@@ -12,7 +12,8 @@ import csv as csv
 import datetime
 import os as os
 import random
-import ImagePlaceholders as Placeholders
+import ImagePlaceholders
+import Placeholders
 import ImageDataManager as DataManager
 import word2Vec as w2v
 from sklearn.metrics import f1_score
@@ -37,7 +38,7 @@ format = "%d_%m_%Y_%H_%M_%S"
 run_folder = today.strftime(format)
 
 
-x_main = tf.placeholder(tf.float32, shape=[None, Placeholders.feature_width])
+x_main = tf.placeholder(tf.float32, shape=[None, ImagePlaceholders.feature_width])
 keep_prob = tf.placeholder(tf.float32)
 
 train_loss_results = []
@@ -65,7 +66,7 @@ validation_f1_results = []
 
 
 
-x = Placeholders.x
+x = ImagePlaceholders.x
 y_ = Placeholders.y_
 
 def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kdm, epoch, datasetType = "Test"):
@@ -79,7 +80,7 @@ def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kd
     data = test
     batch_features = data.features[random_index:random_index+total_samples]
     batch_labels = data.labels[random_index:random_index+total_samples]
-    batch_x = batch_features.reshape(-1, Placeholders.feature_width)
+    batch_x = batch_features.reshape(-1, ImagePlaceholders.feature_width)
 
     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch_labels,
                                      keep_prob: 1.0})
@@ -99,39 +100,39 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
     data = test
     #batch_features =  data.features
     #batch_labels = data.labels
-    batch_features = data.features[:, :Placeholders.feature_width]
-    batch_labels = one_hot(data.features[:, Placeholders.feature_width])
+    batch_features = data.features[:, :ImagePlaceholders.feature_width]
+    batch_labels = one_hot(data.features[:, ImagePlaceholders.feature_width])
     #batch_x = batch_features#batch_features.reshape(-1, Placeholders.feature_width)
 
-    features = batch_features[:, :Placeholders.feature_width]
+    features = batch_features[:, :ImagePlaceholders.feature_width]
     # print(batch[0][:,Placeholders.feature_width])
     labels = batch_labels
     # print("Features shape:")
     # print(features.shape)
     # print(labels.shape)
     batch_x = features
-    rnn_features = np.array(features[:, Placeholders.img_feature_width + Placeholders.profile_color_feature_length:]) \
-        .reshape((-1, Placeholders.n_steps, Placeholders.n_inputs))
+    rnn_features = np.array(features[:, ImagePlaceholders.img_feature_width + ImagePlaceholders.profile_color_feature_length:]) \
+        .reshape((-1, ImagePlaceholders.n_steps, ImagePlaceholders.n_inputs))
 
-    other_features = features[:, :Placeholders.img_feature_width + Placeholders.profile_color_feature_length]
-    acc = sess.run(accuracy, feed_dict={Placeholders.rnn_X: rnn_features,
-                                        Placeholders.rnn_other_features: other_features,
+    other_features = features[:, :ImagePlaceholders.img_feature_width + ImagePlaceholders.profile_color_feature_length]
+    acc = sess.run(accuracy, feed_dict={ImagePlaceholders.rnn_X: rnn_features,
+                                        ImagePlaceholders.rnn_other_features: other_features,
                                         y_: labels,
                                         keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
-    mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
-                               Placeholders.rnn_other_features: other_features,
+    mse = loss.eval(feed_dict={ImagePlaceholders.rnn_X: rnn_features,
+                               ImagePlaceholders.rnn_other_features: other_features,
                                y_: labels,
                                keep_prob: 1.0})
     print(datasetType + " Loss: {:.4}".format(mse))
     predictions = np.array(sess.run(tf.argmax(y_conv, 1),
-                            feed_dict={Placeholders.rnn_X: rnn_features,
-                                       Placeholders.rnn_other_features: other_features,
+                            feed_dict={ImagePlaceholders.rnn_X: rnn_features,
+                                       ImagePlaceholders.rnn_other_features: other_features,
                                        y_: labels,
                                        keep_prob: 1.0}))
     correct_predictions = np.array(sess.run(correct_prediction,
-                                    feed_dict={Placeholders.rnn_X: rnn_features,
-                                               Placeholders.rnn_other_features: other_features,
+                                    feed_dict={ImagePlaceholders.rnn_X: rnn_features,
+                                               ImagePlaceholders.rnn_other_features: other_features,
                                                y_: labels,
                                                keep_prob: 1.0}))
     f1_predictions = np.array(predictions)
@@ -201,10 +202,10 @@ def train(sess, retrain, fc7):
 
 
 
-    all_features = Placeholders.rnn_other_features
+    all_features = ImagePlaceholders.rnn_other_features
 
     image_fc1 = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    image_logits = tf.layers.dense(image_fc1, Placeholders.n_classes)
+    image_logits = tf.layers.dense(image_fc1, ImagePlaceholders.n_classes)
     #fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
     image_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits= image_logits, labels=y_)
 
@@ -234,27 +235,27 @@ def train(sess, retrain, fc7):
             print ("Starting epoch", epoch, " at:", datetime.datetime.now())
             for batch_count in range(int(len(kdm.train.features)/MINIBATCH_SIZE)):
                 batch = kdm.next_batch(MINIBATCH_SIZE)
-                features = batch[0][:,:Placeholders.feature_width]
-                labels = one_hot(batch[0][:,Placeholders.feature_width])
+                features = batch[0][:,:ImagePlaceholders.feature_width]
+                labels = one_hot(batch[0][:,ImagePlaceholders.feature_width])
                 batch_x = features
-                rnn_features = np.array(features[:, Placeholders.img_feature_width + Placeholders.profile_color_feature_length:])\
-                                .reshape((-1, Placeholders.n_steps, Placeholders.n_inputs))
-                other_features = features[:, :Placeholders.img_feature_width + Placeholders.profile_color_feature_length]
-                sess.run(image_train_step, feed_dict={Placeholders.rnn_X: rnn_features,
-                                                Placeholders.rnn_other_features : other_features,
+                rnn_features = np.array(features[:, ImagePlaceholders.img_feature_width + ImagePlaceholders.profile_color_feature_length:])\
+                                .reshape((-1, ImagePlaceholders.n_steps, ImagePlaceholders.n_inputs))
+                other_features = features[:, :ImagePlaceholders.img_feature_width + ImagePlaceholders.profile_color_feature_length]
+                sess.run(image_train_step, feed_dict={ImagePlaceholders.rnn_X: rnn_features,
+                                                      ImagePlaceholders.rnn_other_features : other_features,
                                                 y_: labels,
                                                 keep_prob: 0.75})
             if(epoch%10 == 0):
-                mse = image_loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
-                                            Placeholders.rnn_other_features : other_features,
+                mse = image_loss.eval(feed_dict={ImagePlaceholders.rnn_X: rnn_features,
+                                                 ImagePlaceholders.rnn_other_features : other_features,
                                             y_: labels,
                                             keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
                 train_accuracy = test_all(sess, image_accuracy, kdm.train, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch, datasetType="Train")
                 validation_accuracy = test_all(sess, image_accuracy, kdm.validation, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch, datasetType="Validation")
-                if (validation_accuracy > Placeholders.best_accuracy_so_far):
-                    Placeholders.best_accuracy_so_far = validation_accuracy
+                if (validation_accuracy > ImagePlaceholders.best_accuracy_so_far):
+                    ImagePlaceholders.best_accuracy_so_far = validation_accuracy
                     test_all(sess, image_accuracy, kdm.test, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch)
                 elif (train_accuracy > 70):
                     test_all(sess, image_accuracy, kdm.test, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch)
@@ -264,7 +265,7 @@ def train(sess, retrain, fc7):
         print("Model saved in file: %s" % save_path)
     return image_logits
 
-def one_hot(vec, vals = Placeholders.n_classes):
+def one_hot(vec, vals = ImagePlaceholders.n_classes):
     n = len(vec)
     vec = [int(val) for val in vec]
     out = np.zeros((n, vals))
