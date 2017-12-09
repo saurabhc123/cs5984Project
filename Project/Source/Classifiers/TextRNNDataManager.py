@@ -12,7 +12,7 @@ import csv as csv
 import datetime
 import os as os
 import random
-import Placeholders
+import TextClassifierPlaceholders as Placeholders
 import copyreg
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
@@ -109,6 +109,7 @@ class KaggleRNNDataSet(object):
         return np.array(features), np.array(labels)
 
     def get_normalized_dataset(self):
+
         index = 0
         normalized_features = np.array([]).reshape((len(self.features), 0))
         normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.text_feature_length])))
@@ -170,10 +171,10 @@ class KaggleRNNSample(object):
         return features
 
     def compose_features(self, fc7_x, features, link_color_feature, sidebar_feature, text_word_vector):
-        features = np.hstack((features, fc7_x))
+        #features = np.hstack((features, fc7_x))
         #features = np.hstack((features, sidebar_feature))
         #features = np.hstack((features, link_color_feature))
-        #features = np.hstack((features, text_word_vector))
+        features = np.hstack((features, text_word_vector))
         #features = features.reshape(-1, Placeholders.feature_width)
         return features
 

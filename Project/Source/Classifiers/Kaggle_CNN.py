@@ -13,28 +13,33 @@ import csv as csv
 import datetime
 import os as os
 import random
-import MainClassifier
 import Placeholders
 
 import LSTMClassifier
 import GRUClassifier
-import TextClassifier
 import ImageClassifier
-
 
 current_working_folder = os.path.dirname(os.getcwd())
 
-metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/')
-train_metadata_filename = 'downsampled48_gender_train.txt'
-test_metadata_filename = 'downsampled48_gender_train.txt'
-image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/aligned/')
+# metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/')
+# train_metadata_filename = 'downsampled48_gender_train.txt'
+# test_metadata_filename = 'downsampled48_gender_train.txt'
+#image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Adience/aligned/')
 model_folder_name = "models/adience"
 model_filename = os.path.join(model_folder_name,"adience_model.ckpt")
+
+
+metadata_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/')
+image_files_path = os.path.join(current_working_folder, 'Project/Datasets/Kaggle/ProfileImages')
+train_metadata_filename = 'Kaggle-str-process.csv'
+serialized_train_metadata_filename = 'KaggleTwitter.json'
+test_metadata_filename = 'Kaggle-str-process.csv'
+
 STEPS = 50
 MINIBATCH_SIZE = 100
 n_channels = 3
 
-class AdienceLoader(object):
+class KaggleLoader(object):
     def __init__(self, source_files, labels):
         self._source = source_files
         self._i = 0
@@ -43,12 +48,8 @@ class AdienceLoader(object):
 
     def load(self):
         data = self._source
-        imgs = [image_files_path + d for d in self._source]
-        images = np.asarray([plt.imread(fname, format='jpeg') for fname in imgs])
-        #im = plt.imread(imgs[0], format='jpeg')
-        #plt.imshow(im)
-        #plt.show()
-        #display_image(images[0:4],2)
+        imgs = [image_files_path + '/' + d + '.jpg' for d in self._source]
+        images = np.asarray([plt.imread(fname, format='jpg') for fname in imgs])
         n = len(images)
         self.images = images.reshape(n, n_channels, Placeholders.img_dim, Placeholders.img_dim).transpose(0, 2, 3, 1)\
                           .astype(float) / 255
@@ -60,18 +61,53 @@ class AdienceLoader(object):
         self._i = (self._i + batch_size) % len(self.images)
         return x, y
 
-class AdienceDataManager(object):
+class KaggleImageDataManager(object):
     def __init__(self):
-        train_data_image_filenames , train_labels = load_data(metadata_files_path + train_metadata_filename)
-        #imgs = [plt.imread(fname)[...,:n_channels] for fname in train_data_image_filenames]
+        self.data = []
+        train_data_image_filenames , train_labels = self.load_data(metadata_files_path + train_metadata_filename)
         train_d, test_d, train_labels, test_labels = train_test_split(train_data_image_filenames, train_labels, test_size=0.3, random_state= random.randint(0,100) )
         test_d, validation_d, test_labels, validation_labels = train_test_split(test_d, test_labels, test_size=0.5, random_state = random.randint(0,100) )
-        self.train = AdienceLoader(train_d, train_labels).load()
+        self.train = KaggleLoader(train_d, train_labels).load()
         print("Training data size:" + str(len(train_labels)))
-        #test_data_image_filenames , test_labels = load_data(metadata_files_path + test_metadata_filename)
-        self.test = AdienceLoader(test_d, test_labels).load()
-        self.validation = AdienceLoader(validation_d, validation_labels).load()
+        self.test = KaggleLoader(test_d, test_labels).load()
+        self.validation = KaggleLoader(validation_d, validation_labels).load()
         print("Test data size:" + str(len(test_labels)))
+
+    def load_data(self, inputFilenameWithPath):
+        data = []
+        labels = []
+        with open(inputFilenameWithPath, 'rt') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            next(reader)  # skip header row
+            for row in reader:
+                try:
+                    data.append(self.get_image_data(row[5], row[4]))
+                    labels.append(int(0) if row[0] == 'male' else int(1))
+                except Exception as ex:
+                    print(ex)
+                    print("Omitting:", row[4])
+                    pass
+
+        return data , labels
+
+    def get_image_data(self, image_file, name):
+        file_name = image_file.split('/')[-1]
+        file_extension = file_name.split('.')[-1]
+        full_file_name = os.path.join(image_files_path, name + '.' + file_extension)
+        image_data = plt.imread(full_file_name, format=file_extension)
+        return image_data
+
+    def get_clean_kaggle_dataset(self):
+        goodData = []
+        for sample in self.data:
+            try:
+                img_data = sample.get_image_data()
+                goodData.append(sample)
+            except Exception as ex:
+                print(ex)
+                pass
+                #print("Omitting:", sample.name)
+        return goodData
 
 
 def one_hot(vec, vals=Placeholders.n_classes):
@@ -80,16 +116,7 @@ def one_hot(vec, vals=Placeholders.n_classes):
     out[range(n), vec] = 1
     return out
 
-def load_data(inputFilenameWithPath):
-    data = []
-    labels = []
-    with open(inputFilenameWithPath, 'rt') as csvfile:
-        reader = csv.reader(csvfile, delimiter=' ')
-        for row in reader:
-            data.append(row[0])
-            labels.append(int(row[1]))
-    #print(len(data))
-    return data , labels
+
 
 def display_image(images, size):
     n = len(images)
@@ -206,9 +233,9 @@ def train(sess, adience, retrain = False):
 
     with tf.variable_scope("FC-7"):
         fully_connected1_dropout = tf.nn.dropout(conv3_flat, keep_prob=keep_prob)
-        full_1 = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout, Placeholders.adience_img_feature_width))
+        full_1 = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout, Placeholders.img_feature_width))
         fully_connected2_dropout = tf.nn.dropout(full_1, keep_prob=keep_prob)
-        fc7layer = tf.nn.relu(ConvHelper.full_layer(fully_connected2_dropout, Placeholders.adience_img_feature_width))
+        fc7layer = tf.nn.relu(ConvHelper.full_layer(fully_connected2_dropout, Placeholders.img_feature_width))
 
 
     y_conv = ConvHelper.full_layer(fc7layer, Placeholders.n_classes)
@@ -223,7 +250,7 @@ def train(sess, adience, retrain = False):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 300
+    STEPS = 3
     MINIBATCH_SIZE = 20
 
     if os.path.exists(model_folder_name) & (not retrain):
@@ -248,20 +275,18 @@ def train(sess, adience, retrain = False):
         print("Model saved in file: %s" % save_path)
     return accuracy, fc7layer
 
-adience = AdienceDataManager()
+adience = KaggleImageDataManager()
 x = Placeholders.x
 y_ = Placeholders.y_
 
 keep_prob = Placeholders.adience_keep_prob
 with tf.Session() as sess:
-    accuracy, fc7 = train(sess, adience, retrain=False)
+    accuracy, fc7 = train(sess, adience, retrain=True)
     image = np.array(adience.train.next_batch(1)[0]).reshape((1,Placeholders.img_dim, Placeholders.img_dim,n_channels))
     print (image.shape)
     fc7rep = get_fc7_representation(image, sess, fc7)
     print (fc7rep.shape)
     validate(sess, accuracy)
-    with tf.variable_scope("main_classifier"):
-        TextClassifier.train(sess, None, True, fc7)
+    #with tf.variable_scope("main_classifier"):
         #ImageClassifier.train(sess, None, True, fc7)
-
 

@@ -13,7 +13,7 @@ import datetime
 import os as os
 import random
 import Placeholders
-import TextRNNDataManager as DataManager
+import KaggleRNNDataManager
 import word2Vec as w2v
 from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
@@ -115,19 +115,23 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
 
     other_features = features[:, :Placeholders.img_feature_width + Placeholders.profile_color_feature_length]
     acc = sess.run(accuracy, feed_dict={Placeholders.rnn_X: rnn_features,
+                                        Placeholders.rnn_other_features: other_features,
                                         y_: labels,
                                         keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
     mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
+                               Placeholders.rnn_other_features: other_features,
                                y_: labels,
                                keep_prob: 1.0})
     print(datasetType + " Loss: {:.4}".format(mse))
     predictions = np.array(sess.run(tf.argmax(y_conv, 1),
                             feed_dict={Placeholders.rnn_X: rnn_features,
+                                       Placeholders.rnn_other_features: other_features,
                                        y_: labels,
                                        keep_prob: 1.0}))
     correct_predictions = np.array(sess.run(correct_prediction,
                                     feed_dict={Placeholders.rnn_X: rnn_features,
+                                               Placeholders.rnn_other_features: other_features,
                                                y_: labels,
                                                keep_prob: 1.0}))
     f1_predictions = np.array(predictions)
@@ -193,23 +197,20 @@ def train(sess, train, retrain, fc7):
         print("Folder exists: " + output_folder)
 
     word_vec = w2v.word2vec()
-    kdm = DataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
+    kdm = KaggleRNNDataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
 
 
-    with tf.variable_scope("LSTM"):
-        lstm_cell = tf.contrib.rnn.BasicLSTMCell(Placeholders.n_neurons, forget_bias = 1.0)
-        outputs, states = tf.nn.dynamic_rnn(lstm_cell, Placeholders.rnn_X, dtype=tf.float32)
 
-    all_features = states[-1]
+    all_features = Placeholders.rnn_other_features
 
-    #fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    output_layer = tf.layers.dense(all_features, Placeholders.n_classes)
-    fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= fully_connected1_dropout,
+    fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
+    output_layer = tf.layers.dense(fully_connected1_dropout, Placeholders.n_classes)
+    #fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
+    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= output_layer,
                                                                     labels=y_))
 
     loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
 
     correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -217,7 +218,7 @@ def train(sess, train, retrain, fc7):
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 300
+    STEPS = 2000
     MINIBATCH_SIZE = 50
 
 
@@ -241,10 +242,12 @@ def train(sess, train, retrain, fc7):
                                 .reshape((-1, Placeholders.n_steps, Placeholders.n_inputs))
                 other_features = features[:, :Placeholders.img_feature_width + Placeholders.profile_color_feature_length]
                 sess.run(train_step, feed_dict={Placeholders.rnn_X: rnn_features,
+                                                Placeholders.rnn_other_features : other_features,
                                                 y_: labels,
-                                                keep_prob: 0.5})
+                                                keep_prob: 0.75})
             if(epoch%10 == 0):
                 mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
+                                            Placeholders.rnn_other_features : other_features,
                                             y_: labels,
                                             keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
