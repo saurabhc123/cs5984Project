@@ -203,16 +203,16 @@ def train(sess, train, retrain, fc7):
     all_features = states[-1]
 
     #fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    output_layer = tf.layers.dense(all_features, Placeholders.n_classes)
-    logits = tf.nn.dropout(output_layer, keep_prob=keep_prob)
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= logits,
-                                                                    labels=y_))
+    text_output_layer = tf.layers.dense(all_features, Placeholders.n_classes)
+    text_logits = tf.nn.dropout(text_output_layer, keep_prob=keep_prob)
+    text_cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= text_logits,
+                                                                                 labels=y_))
 
-    loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-5).minimize(loss)
+    text_loss = tf.reduce_mean(text_cross_entropy)
+    text_train_step = tf.train.AdamOptimizer(1e-5).minimize(text_loss)
 
-    correct_prediction = tf.equal(tf.argmax(output_layer, 1), tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    text_correct_prediction = tf.equal(tf.argmax(text_output_layer, 1), tf.argmax(y_, 1))
+    text_accuracy = tf.reduce_mean(tf.cast(text_correct_prediction, tf.float32))
 
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
@@ -240,27 +240,27 @@ def train(sess, train, retrain, fc7):
                 rnn_features = np.array(features[:, Placeholders.img_feature_width + Placeholders.profile_color_feature_length:])\
                                 .reshape((-1, Placeholders.n_steps, Placeholders.n_inputs))
                 other_features = features[:, :Placeholders.img_feature_width + Placeholders.profile_color_feature_length]
-                sess.run(train_step, feed_dict={Placeholders.rnn_X: rnn_features,
+                sess.run(text_train_step, feed_dict={Placeholders.rnn_X: rnn_features,
                                                 y_: labels,
                                                 keep_prob: 0.5})
             if(epoch%10 == 0):
-                mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
+                mse = text_loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
                                             y_: labels,
                                             keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Train")
-                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch, datasetType="Validation")
+                train_accuracy = test_all(sess, text_accuracy, kdm.train, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch, datasetType="Train")
+                validation_accuracy = test_all(sess, text_accuracy, kdm.validation, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch, datasetType="Validation")
                 if (validation_accuracy > Placeholders.best_accuracy_so_far):
                     Placeholders.best_accuracy_so_far = validation_accuracy
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch)
+                    test_all(sess, text_accuracy, kdm.test, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch)
                 elif (train_accuracy > 70):
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm, epoch)
+                    test_all(sess, text_accuracy, kdm.test, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch)
                 np.random.shuffle(kdm.train.features)
-        test_all(sess, accuracy, kdm.test, fc7, word_vec, output_layer, correct_prediction, loss, kdm)
+        test_all(sess, text_accuracy, kdm.test, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return logits
+    return text_logits
 
 def one_hot(vec, vals = Placeholders.n_classes):
     n = len(vec)

@@ -203,16 +203,16 @@ def train(sess, retrain, fc7):
 
     all_features = Placeholders.rnn_other_features
 
-    fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    logits = tf.layers.dense(fully_connected1_dropout, Placeholders.n_classes)
+    image_fc1 = tf.nn.dropout(all_features, keep_prob=keep_prob)
+    image_logits = tf.layers.dense(image_fc1, Placeholders.n_classes)
     #fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits= logits, labels=y_)
+    image_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits= image_logits, labels=y_)
 
-    loss = tf.reduce_mean(cross_entropy)
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
+    image_loss = tf.reduce_mean(image_cross_entropy)
+    image_train_step = tf.train.AdamOptimizer(1e-4).minimize(image_loss)
 
-    correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    image_correct_prediction = tf.equal(tf.argmax(image_logits, 1), tf.argmax(y_, 1))
+    image_accuracy = tf.reduce_mean(tf.cast(image_correct_prediction, tf.float32))
 
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
@@ -240,29 +240,29 @@ def train(sess, retrain, fc7):
                 rnn_features = np.array(features[:, Placeholders.img_feature_width + Placeholders.profile_color_feature_length:])\
                                 .reshape((-1, Placeholders.n_steps, Placeholders.n_inputs))
                 other_features = features[:, :Placeholders.img_feature_width + Placeholders.profile_color_feature_length]
-                sess.run(train_step, feed_dict={Placeholders.rnn_X: rnn_features,
+                sess.run(image_train_step, feed_dict={Placeholders.rnn_X: rnn_features,
                                                 Placeholders.rnn_other_features : other_features,
                                                 y_: labels,
                                                 keep_prob: 0.75})
             if(epoch%10 == 0):
-                mse = loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
+                mse = image_loss.eval(feed_dict={Placeholders.rnn_X: rnn_features,
                                             Placeholders.rnn_other_features : other_features,
                                             y_: labels,
                                             keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                train_accuracy = test_all(sess, accuracy, kdm.train, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch, datasetType="Train")
-                validation_accuracy = test_all(sess, accuracy, kdm.validation, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch, datasetType="Validation")
+                train_accuracy = test_all(sess, image_accuracy, kdm.train, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch, datasetType="Train")
+                validation_accuracy = test_all(sess, image_accuracy, kdm.validation, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch, datasetType="Validation")
                 if (validation_accuracy > Placeholders.best_accuracy_so_far):
                     Placeholders.best_accuracy_so_far = validation_accuracy
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch)
+                    test_all(sess, image_accuracy, kdm.test, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch)
                 elif (train_accuracy > 70):
-                    test_all(sess, accuracy, kdm.test, fc7, word_vec, logits, correct_prediction, loss, kdm, epoch)
+                    test_all(sess, image_accuracy, kdm.test, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm, epoch)
                 np.random.shuffle(kdm.train.features)
-        test_all(sess, accuracy, kdm.test, fc7, word_vec, logits, correct_prediction, loss, kdm)
+        test_all(sess, image_accuracy, kdm.test, fc7, word_vec, image_logits, image_correct_prediction, image_loss, kdm)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return sess , logits
+    return image_logits
 
 def one_hot(vec, vals = Placeholders.n_classes):
     n = len(vec)

@@ -260,9 +260,10 @@ with tf.Session() as sess:
     fc7rep = get_fc7_representation(image, sess, fc7)
     print (fc7rep.shape)
     validate(sess, accuracy)
-    #with tf.variable_scope("text_classifier"):
-        #TextClassifier.train(sess, None, True, fc7)
+    with tf.variable_scope("text_classifier"):
+        text_logits = TextClassifier.train(sess, None, True, fc7)
     with tf.variable_scope("image_classifier"):
-        ImageClassifier.train(sess, True, fc7)
+        image_logits = ImageClassifier.train(sess, True, fc7)
+
 
 
