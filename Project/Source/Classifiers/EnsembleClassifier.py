@@ -103,7 +103,7 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
     #batch_features =  data.features
     #batch_labels = data.labels
     batch_features = data.features[:, :EnsemblePlaceholders.feature_width]
-    batch_labels = one_hot(data.features[:, EnsemblePlaceholders.feature_width])
+    batch_labels = one_hot(data.labels)
     #batch_x = batch_features#batch_features.reshape(-1, Placeholders.feature_width)
 
     features = batch_features[:, :EnsemblePlaceholders.feature_width]
@@ -116,7 +116,7 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
     rnn_features = np.array(features[:, EnsemblePlaceholders.img_feature_width + EnsemblePlaceholders.profile_color_feature_length:]) \
         .reshape((-1, EnsemblePlaceholders.n_steps, EnsemblePlaceholders.n_inputs))
 
-    other_features = features[:, :EnsemblePlaceholders.img_feature_width + EnsemblePlaceholders.profile_color_feature_length]
+    other_features = features[:, :EnsemblePlaceholders.img_feature_width]
 
     batch_text_logits = sess.run(text_logits, feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
                                                          y_: labels,
@@ -214,11 +214,11 @@ def train(sess, image_logits, text_logits, retrain, fc7):
     #
 
 
-    ensemble_hidden = tf.layers.dense(EnsemblePlaceholders.x, EnsemblePlaceholders.num_of_units, activation=tf.nn.tanh)
+    ensemble_hidden = tf.layers.dense(EnsemblePlaceholders.x, EnsemblePlaceholders.num_of_units, activation=tf.nn.relu)
     ensemble_fc1 = tf.nn.dropout(ensemble_hidden, keep_prob=keep_prob)
     ensemble_outputs = tf.layers.dense(ensemble_fc1, EnsemblePlaceholders.n_classes)
-    ensemble_cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= ensemble_outputs,
-                                                                    labels=y_))
+    ensemble_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits= ensemble_outputs,
+                                                                    labels=y_)
 
     ensemble_loss = tf.reduce_mean(ensemble_cross_entropy)
     ensemble_train_step = tf.train.AdamOptimizer(1e-5).minimize(ensemble_loss)
@@ -252,12 +252,12 @@ def train(sess, image_logits, text_logits, retrain, fc7):
                 batch_x = features
                 rnn_features = np.array(features[:, EnsemblePlaceholders.img_feature_width + EnsemblePlaceholders.profile_color_feature_length:])\
                                 .reshape((-1, EnsemblePlaceholders.n_steps, EnsemblePlaceholders.n_inputs))
-                other_features = features[:, :EnsemblePlaceholders.img_feature_width + EnsemblePlaceholders.profile_color_feature_length]
+                other_features = features[:, :EnsemblePlaceholders.img_feature_width]
 
                 batch_text_logits = sess.run(text_logits, feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
                                             y_: labels,
                                             keep_prob: 1.0})
-                batch_image_logits = sess.run(image_logits, feed_dict={ ImagePlaceholders.rnn_other_features : other_features,
+                batch_image_logits = sess.run(image_logits, feed_dict={ ImagePlaceholders.rnn_other_features : other_features[:EnsemblePlaceholders.img_feature_width],
                                             y_: labels,
                                             keep_prob: 1.0})
 
@@ -267,7 +267,7 @@ def train(sess, image_logits, text_logits, retrain, fc7):
 
                 sess.run(ensemble_train_step, feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                                 y_: labels,
-                                                keep_prob: 0.7})
+                                                keep_prob: 1.0})
             if(epoch%10 == 0):
                 mse = ensemble_loss.eval(feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                             y_: labels,

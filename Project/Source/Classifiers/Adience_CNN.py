@@ -262,9 +262,9 @@ with tf.Session() as sess:
     print (fc7rep.shape)
     validate(sess, accuracy)
     with tf.variable_scope("text_classifier"):
-        text_logits = TextClassifier.train(sess, None, True, fc7)
+        text_logits = TextClassifier.train(sess, None, False, fc7)
     with tf.variable_scope("image_classifier"):
-        image_logits = ImageClassifier.train(sess, True, fc7)
+        image_logits = ImageClassifier.train(sess, False, fc7)
     with tf.variable_scope("ensemble_classifier"):
         EnsembleClassifier.train(sess, image_logits, text_logits, True, fc7)
 
