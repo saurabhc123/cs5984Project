@@ -161,7 +161,8 @@ class KaggleRNNSample(object):
         try:
             fc7_x = self.get_fc7_representation(self.get_image_data())
         except:
-            print("Bad Image data for:" + self.name)
+            pass
+            #print("Bad Image data for:" + self.name)
         text_word_vector = self.word_vec.get_sentence_vector_ex(self.description + ' ' + self.tweet_text)
         #print(text_word_vector.shape)
         sidebar_feature = self.hex_to_rgb(self.sidebar_color)

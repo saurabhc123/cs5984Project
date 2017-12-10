@@ -20,6 +20,7 @@ import LSTMClassifier
 import GRUClassifier
 import TextClassifier
 import ImageClassifier
+import EnsembleClassifier
 
 
 current_working_folder = os.path.dirname(os.getcwd())
@@ -205,13 +206,13 @@ def train(sess, adience, retrain = False):
     conv3_flat = tf.reshape(conv3_pool, [-1, 3 * 3 * 384])
 
     with tf.variable_scope("FC-7"):
-        fully_connected1_dropout = tf.nn.dropout(conv3_flat, keep_prob=keep_prob)
-        full_1 = tf.nn.relu(ConvHelper.full_layer(fully_connected1_dropout, Placeholders.adience_img_feature_width))
-        fully_connected2_dropout = tf.nn.dropout(full_1, keep_prob=keep_prob)
-        fc7layer = tf.nn.relu(ConvHelper.full_layer(fully_connected2_dropout, Placeholders.adience_img_feature_width))
+        adience_fc1 = tf.nn.dropout(conv3_flat, keep_prob=keep_prob)
+        adience_full1 = tf.nn.relu(ConvHelper.full_layer(adience_fc1, Placeholders.adience_img_feature_width))
+        adience_fc1 = tf.nn.dropout(adience_full1, keep_prob=keep_prob)
+        adience_fc7 = tf.nn.relu(ConvHelper.full_layer(adience_fc1, Placeholders.adience_img_feature_width))
 
 
-    y_conv = ConvHelper.full_layer(fc7layer, Placeholders.n_classes)
+    y_conv = ConvHelper.full_layer(adience_fc7, Placeholders.n_classes)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= y_conv,
                                                                    labels=y_))
     loss = tf.reduce_mean(cross_entropy)
@@ -246,7 +247,7 @@ def train(sess, adience, retrain = False):
         test(sess, accuracy)
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return accuracy, fc7layer
+    return accuracy, adience_fc7
 
 adience = AdienceDataManager()
 x = Placeholders.x
@@ -260,8 +261,12 @@ with tf.Session() as sess:
     fc7rep = get_fc7_representation(image, sess, fc7)
     print (fc7rep.shape)
     validate(sess, accuracy)
-    with tf.variable_scope("main_classifier"):
-        TextClassifier.train(sess, None, True, fc7)
-        #ImageClassifier.train(sess, None, True, fc7)
+    with tf.variable_scope("text_classifier"):
+        text_logits = TextClassifier.train(sess, None, False, fc7)
+    with tf.variable_scope("image_classifier"):
+        image_logits = ImageClassifier.train(sess, False, fc7)
+    with tf.variable_scope("ensemble_classifier"):
+        EnsembleClassifier.train(sess, image_logits, text_logits, True, fc7)
+
 
 

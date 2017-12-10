@@ -12,7 +12,7 @@ import csv as csv
 import datetime
 import os as os
 import random
-import Placeholders
+import EnsemblePlaceholders
 import copyreg
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
@@ -112,11 +112,11 @@ class KaggleRNNDataSet(object):
         index = 0
         normalized_features = np.array([]).reshape((len(self.features), 0))
         normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.text_feature_length])))
-        index = normalized_features.shape[1]
-        features_to_scale = self.features[:,index : index + Placeholders.profile_color_feature_length]
-        normalized_features = np.hstack((normalized_features, preprocessing.scale(features_to_scale)))
-        index = normalized_features.shape[1]
-        normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.text_feature_length])))
+        # index = normalized_features.shape[1]
+        # features_to_scale = self.features[:,index : index + Placeholders.profile_color_feature_length]
+        # normalized_features = np.hstack((normalized_features, preprocessing.scale(features_to_scale)))
+        # index = normalized_features.shape[1]
+        # normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.text_feature_length])))
         normalized_features = np.hstack((normalized_features, self.labels))
         return normalized_features
 
@@ -160,8 +160,7 @@ class KaggleRNNSample(object):
         try:
             fc7_x = self.get_fc7_representation(self.get_image_data())
         except:
-            pass
-            #print("Bad Image data for:" + self.name)
+            print("Bad Image data for:" + self.name)
         text_word_vector = self.word_vec.get_sentence_vector_ex(self.description + ' ' + self.tweet_text)
         #print(text_word_vector.shape)
         sidebar_feature = self.hex_to_rgb(self.sidebar_color)
@@ -172,10 +171,10 @@ class KaggleRNNSample(object):
 
     def compose_features(self, fc7_x, features, link_color_feature, sidebar_feature, text_word_vector):
         features = np.hstack((features, fc7_x))
-        features = np.hstack((features, sidebar_feature))
-        features = np.hstack((features, link_color_feature))
-        features = np.hstack((features, text_word_vector))
-        features = features.reshape(-1, Placeholders.feature_width)
+        #features = np.hstack((features, sidebar_feature))
+        #features = np.hstack((features, link_color_feature))
+        #features = np.hstack((features, text_word_vector))
+        #features = features.reshape(-1, Placeholders.feature_width)
         return features
 
 

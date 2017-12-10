@@ -12,10 +12,11 @@ import csv as csv
 import datetime
 import os as os
 import random
+import EnsemblePlaceholders
+import  Placeholders
 import TextClassifierPlaceholders
-import Placeholders
-
-import TextRNNDataManager as DataManager
+import ImagePlaceholders
+import KaggleRNNDataManager
 import word2Vec as w2v
 from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
@@ -23,7 +24,7 @@ from sklearn.metrics import recall_score
 
 
 model_folder_name = "models/adience"
-model_filename = os.path.join(model_folder_name,"text_model.ckpt")
+model_filename = os.path.join(model_folder_name,"ensemble_model.ckpt")
 STEPS = 50
 MINIBATCH_SIZE = 100
 
@@ -39,7 +40,7 @@ format = "%d_%m_%Y_%H_%M_%S"
 run_folder = today.strftime(format)
 
 
-x_main = tf.placeholder(tf.float32, shape=[None, TextClassifierPlaceholders.feature_width])
+x_main = tf.placeholder(tf.float32, shape=[None, EnsemblePlaceholders.feature_width])
 keep_prob = Placeholders.keep_prob
 
 train_loss_results = []
@@ -67,7 +68,7 @@ validation_f1_results = []
 
 
 
-x = TextClassifierPlaceholders.x
+x = EnsemblePlaceholders.x
 y_ = Placeholders.y_
 
 def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kdm, epoch, datasetType = "Test"):
@@ -81,7 +82,7 @@ def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kd
     data = test
     batch_features = data.features[random_index:random_index+total_samples]
     batch_labels = data.labels[random_index:random_index+total_samples]
-    batch_x = batch_features.reshape(-1, TextClassifierPlaceholders.feature_width)
+    batch_x = batch_features.reshape(-1, EnsemblePlaceholders.feature_width)
 
     acc = sess.run(accuracy, feed_dict={x_main: batch_x, y_: batch_labels,
                                      keep_prob: 1.0})
@@ -94,42 +95,51 @@ def test(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kd
     return acc * 100
 
 
-def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kdm, epoch = 0, datasetType = "Test"):
+def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss, kdm, text_logits, image_logits, epoch = 0, datasetType = "Test"):
     print ("Starting test on all data:" + datasetType)
 
     #print len(adience.test.images)
     data = test
     #batch_features =  data.features
     #batch_labels = data.labels
-    batch_features = data.features[:, :TextClassifierPlaceholders.feature_width]
-    batch_labels = one_hot(data.features[:, TextClassifierPlaceholders.feature_width])
+    batch_features = data.features[:, :EnsemblePlaceholders.feature_width]
+    batch_labels = one_hot(data.labels)
     #batch_x = batch_features#batch_features.reshape(-1, Placeholders.feature_width)
 
-    features = batch_features[:, :TextClassifierPlaceholders.feature_width]
+    features = batch_features[:, :EnsemblePlaceholders.feature_width]
     # print(batch[0][:,Placeholders.feature_width])
     labels = batch_labels
     # print("Features shape:")
     # print(features.shape)
     # print(labels.shape)
     batch_x = features
-    rnn_features = np.array(features[:, TextClassifierPlaceholders.img_feature_width + TextClassifierPlaceholders.profile_color_feature_length:]) \
-        .reshape((-1, TextClassifierPlaceholders.n_steps, TextClassifierPlaceholders.n_inputs))
+    rnn_features = np.array(features[:, EnsemblePlaceholders.img_feature_width + EnsemblePlaceholders.profile_color_feature_length:]) \
+        .reshape((-1, EnsemblePlaceholders.n_steps, EnsemblePlaceholders.n_inputs))
 
-    other_features = features[:, :TextClassifierPlaceholders.img_feature_width + TextClassifierPlaceholders.profile_color_feature_length]
-    acc = sess.run(accuracy, feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+    other_features = features[:, :EnsemblePlaceholders.img_feature_width]
+
+    batch_text_logits = sess.run(text_logits, feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+                                                         y_: labels,
+                                                         keep_prob: 1.0})
+    batch_image_logits = sess.run(image_logits, feed_dict={ImagePlaceholders.rnn_other_features: other_features,
+                                                           y_: labels,
+                                                           keep_prob: 1.0})
+
+    ensemble_features = tf.concat([batch_image_logits, batch_text_logits], axis=1).eval()
+    acc = sess.run(accuracy, feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                         y_: labels,
                                         keep_prob: 1.0})
     print (datasetType + " Accuracy: {:.4}%".format(acc * 100))
-    mse = loss.eval(feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+    mse = loss.eval(feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                y_: labels,
                                keep_prob: 1.0})
     print(datasetType + " Loss: {:.4}".format(mse))
     predictions = np.array(sess.run(tf.argmax(y_conv, 1),
-                            feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+                            feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                        y_: labels,
                                        keep_prob: 1.0}))
     correct_predictions = np.array(sess.run(correct_prediction,
-                                    feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+                                    feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                                y_: labels,
                                                keep_prob: 1.0}))
     f1_predictions = np.array(predictions)
@@ -185,7 +195,7 @@ def write_metrics(datasetType, wr):
 
 # Do the default
 
-def train(sess, train, retrain, fc7):
+def train(sess, image_logits, text_logits, retrain, fc7):
     output_folder = os.path.join(current_working_folder,"Project/output")
     output_folder = os.path.join(output_folder, run_folder)
     if not os.path.exists(output_folder):
@@ -195,31 +205,31 @@ def train(sess, train, retrain, fc7):
         print("Folder exists: " + output_folder)
 
     word_vec = w2v.word2vec()
-    kdm = DataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
+    kdm = KaggleRNNDataManager.KaggleRNNDataManager(kaggle_files_path + train_metadata_filename, sess, fc7, word_vec)
 
 
-    with tf.variable_scope("LSTM"):
-        lstm_cell = tf.contrib.rnn.BasicLSTMCell(TextClassifierPlaceholders.n_neurons, forget_bias = 1.0)
-        outputs, states = tf.nn.dynamic_rnn(lstm_cell, TextClassifierPlaceholders.rnn_X, dtype=tf.float32)
+    # with tf.variable_scope("gru"):
+    #     gru_cell = tf.contrib.rnn.GRUCell(Placeholders.n_neurons)
+    #     outputs, states = tf.nn.dynamic_rnn(gru_cell, Placeholders.rnn_X, dtype=tf.float32)
+    #
 
-    all_features = states[-1]
 
-    #fully_connected1_dropout = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    text_output_layer = tf.layers.dense(all_features, TextClassifierPlaceholders.n_classes)
-    text_logits = tf.nn.dropout(text_output_layer, keep_prob=keep_prob)
-    text_cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits= text_logits,
-                                                                                 labels=y_))
+    ensemble_hidden = tf.layers.dense(EnsemblePlaceholders.x, EnsemblePlaceholders.num_of_units, activation=tf.nn.relu)
+    ensemble_fc1 = tf.nn.dropout(ensemble_hidden, keep_prob=keep_prob)
+    ensemble_outputs = tf.layers.dense(ensemble_fc1, EnsemblePlaceholders.n_classes)
+    ensemble_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits= ensemble_outputs,
+                                                                    labels=y_)
 
-    text_loss = tf.reduce_mean(text_cross_entropy)
-    text_train_step = tf.train.AdamOptimizer(1e-5).minimize(text_loss)
+    ensemble_loss = tf.reduce_mean(ensemble_cross_entropy)
+    ensemble_train_step = tf.train.AdamOptimizer(1e-5).minimize(ensemble_loss)
 
-    text_correct_prediction = tf.equal(tf.argmax(text_output_layer, 1), tf.argmax(y_, 1))
-    text_accuracy = tf.reduce_mean(tf.cast(text_correct_prediction, tf.float32))
+    ensemble_predictions = tf.equal(tf.argmax(ensemble_outputs, 1), tf.argmax(y_, 1))
+    ensemble_accuracy = tf.reduce_mean(tf.cast(ensemble_predictions, tf.float32))
 
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
-    STEPS = 300
+    STEPS = 200
     MINIBATCH_SIZE = 50
 
 
@@ -236,35 +246,48 @@ def train(sess, train, retrain, fc7):
             print ("Starting epoch", epoch, " at:", datetime.datetime.now())
             for batch_count in range(int(len(kdm.train.features)/MINIBATCH_SIZE)):
                 batch = kdm.next_batch(MINIBATCH_SIZE)
-                features = batch[0][:,:TextClassifierPlaceholders.feature_width]
-                labels = one_hot(batch[0][:,TextClassifierPlaceholders.feature_width])
+                features = batch[0][:,:EnsemblePlaceholders.feature_width]
+                #print(batch[0][:,Placeholders.feature_width])
+                labels = one_hot(batch[0][:,EnsemblePlaceholders.feature_width])
                 batch_x = features
-                rnn_features = np.array(features[:, TextClassifierPlaceholders.img_feature_width + TextClassifierPlaceholders.profile_color_feature_length:])\
-                                .reshape((-1, TextClassifierPlaceholders.n_steps, TextClassifierPlaceholders.n_inputs))
-                other_features = features[:, :TextClassifierPlaceholders.img_feature_width + TextClassifierPlaceholders.profile_color_feature_length]
-                sess.run(text_train_step, feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+                rnn_features = np.array(features[:, EnsemblePlaceholders.img_feature_width + EnsemblePlaceholders.profile_color_feature_length:])\
+                                .reshape((-1, EnsemblePlaceholders.n_steps, EnsemblePlaceholders.n_inputs))
+                other_features = features[:, :EnsemblePlaceholders.img_feature_width]
+
+                batch_text_logits = sess.run(text_logits, feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+                                            y_: labels,
+                                            keep_prob: 1.0})
+                batch_image_logits = sess.run(image_logits, feed_dict={ ImagePlaceholders.rnn_other_features : other_features[:EnsemblePlaceholders.img_feature_width],
+                                            y_: labels,
+                                            keep_prob: 1.0})
+
+                ensemble_features = tf.concat([batch_image_logits, batch_text_logits], axis = 1).eval()
+
+
+
+                sess.run(ensemble_train_step, feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                                 y_: labels,
-                                                keep_prob: 0.5})
+                                                keep_prob: 1.0})
             if(epoch%10 == 0):
-                mse = text_loss.eval(feed_dict={TextClassifierPlaceholders.rnn_X: rnn_features,
+                mse = ensemble_loss.eval(feed_dict={EnsemblePlaceholders.x: ensemble_features,
                                             y_: labels,
                                             keep_prob: 1.0})
                 print("Iter " + str(epoch) + ", Minibatch Loss= " + \
                       "{:.6f}".format(mse))
-                train_accuracy = test_all(sess, text_accuracy, kdm.train, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch, datasetType="Train")
-                validation_accuracy = test_all(sess, text_accuracy, kdm.validation, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch, datasetType="Validation")
-                if (validation_accuracy > TextClassifierPlaceholders.best_accuracy_so_far):
-                    TextClassifierPlaceholders.best_accuracy_so_far = validation_accuracy
-                    test_all(sess, text_accuracy, kdm.test, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch)
+                train_accuracy = test_all(sess, ensemble_accuracy, kdm.train, fc7, word_vec, ensemble_outputs, ensemble_predictions, ensemble_loss, kdm,text_logits, image_logits,  epoch, datasetType="Train")
+                validation_accuracy = test_all(sess, ensemble_accuracy, kdm.validation, fc7, word_vec, ensemble_outputs, ensemble_predictions, ensemble_loss, kdm,text_logits, image_logits,  epoch, datasetType="Validation")
+                if (validation_accuracy > EnsemblePlaceholders.best_accuracy_so_far):
+                    EnsemblePlaceholders.best_accuracy_so_far = validation_accuracy
+                    test_all(sess, ensemble_accuracy, kdm.test, fc7, word_vec, ensemble_outputs, ensemble_predictions, ensemble_loss, kdm,text_logits, image_logits,  epoch)
                 elif (train_accuracy > 70):
-                    test_all(sess, text_accuracy, kdm.test, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm, epoch)
+                    test_all(sess, ensemble_accuracy, kdm.test, fc7, word_vec, ensemble_outputs, ensemble_predictions, ensemble_loss, kdm,text_logits, image_logits,  epoch)
                 np.random.shuffle(kdm.train.features)
-        test_all(sess, text_accuracy, kdm.test, fc7, word_vec, text_output_layer, text_correct_prediction, text_loss, kdm)
+        test_all(sess, ensemble_accuracy, kdm.test, fc7, word_vec, ensemble_outputs, ensemble_predictions, ensemble_loss, kdm,text_logits, image_logits )
         save_path = saver.save(sess, model_filename)
         print("Model saved in file: %s" % save_path)
-    return text_logits
+    return ensemble_accuracy
 
-def one_hot(vec, vals = TextClassifierPlaceholders.n_classes):
+def one_hot(vec, vals = EnsemblePlaceholders.n_classes):
     n = len(vec)
     vec = [int(val) for val in vec]
     out = np.zeros((n, vals))
@@ -274,11 +297,11 @@ def one_hot(vec, vals = TextClassifierPlaceholders.n_classes):
 def write_results_to_file(loss, accuracy, test_data_raw, predictions, correct_predictions, epoch, datasetType, f1score = 0.0, precision = 0.0, recall = 0.0):
     today = datetime.datetime.now()
     format = "_%d_%m_%Y_%H_%M_%S"
-    filename = "output/" + run_folder + "/" + datasetType + "_Text_"+ today.strftime(format) + "_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
+    filename = "output/" + run_folder + "/" + datasetType + today.strftime(format) + "_Ensemble_Iteration_" + str(epoch)  + "_Accuracy_" + str(round(accuracy, 2)) + ".csv"
     with open(filename, 'wt') as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-        wr.writerow(["Loss = " + str(loss)])
         wr.writerow([datasetType + " Accuracy = " + str(accuracy)])
+        wr.writerow(["Loss = " + str(loss)])
         wr.writerow(["Precision = " + str(precision)])
         wr.writerow(["Recall = " + str(recall)])
         wr.writerow(["F1 = " + str(f1score)])
