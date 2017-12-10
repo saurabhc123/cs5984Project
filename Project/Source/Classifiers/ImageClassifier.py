@@ -137,6 +137,8 @@ def test_all(sess, accuracy, test,fc7, word_vec, y_conv, correct_prediction,loss
                                                keep_prob: 1.0}))
     f1_predictions = np.array(predictions)
     f1_truelabels = np.argmax(batch_labels, 1)
+    print(f1_truelabels)
+    print(f1_predictions)
     f1score = f1_score(f1_truelabels, f1_predictions, average='macro')
     precision = precision_score(f1_truelabels, f1_predictions, average='macro')
     recall = recall_score(f1_truelabels, f1_predictions, average='macro')
@@ -205,7 +207,7 @@ def train(sess, retrain, fc7):
     all_features = ImagePlaceholders.rnn_other_features
 
     image_fc1 = tf.nn.dropout(all_features, keep_prob=keep_prob)
-    image_logits = tf.layers.dense(image_fc1, ImagePlaceholders.n_classes)
+    image_logits = tf.layers.dense(image_fc1, ImagePlaceholders.n_classes, activation=tf.nn.relu)
     #fully_connected1_dropout = tf.nn.dropout(output_layer, keep_prob=keep_prob)
     image_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits= image_logits, labels=y_)
 
@@ -237,7 +239,6 @@ def train(sess, retrain, fc7):
                 batch = kdm.next_batch(MINIBATCH_SIZE)
                 features = batch[0][:,:ImagePlaceholders.feature_width]
                 labels = one_hot(batch[0][:,ImagePlaceholders.feature_width])
-                batch_x = features
                 rnn_features = np.array(features[:, ImagePlaceholders.img_feature_width + ImagePlaceholders.profile_color_feature_length:])\
                                 .reshape((-1, ImagePlaceholders.n_steps, ImagePlaceholders.n_inputs))
                 other_features = features[:, :ImagePlaceholders.img_feature_width + ImagePlaceholders.profile_color_feature_length]

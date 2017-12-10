@@ -12,7 +12,8 @@ import csv as csv
 import datetime
 import os as os
 import random
-import ImagePlaceholders as Placeholders
+import ImagePlaceholders
+import Placeholders
 import copyreg
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
@@ -78,8 +79,8 @@ class KaggleRNNDataManager(object):
 
 
     def next_batch(self, batch_size):
-        batch_features = self.train.features[self._i:self._i+batch_size][0:Placeholders.feature_width - 50]
-        batch_labels = self.train.features[self._i:self._i + batch_size][Placeholders.feature_width:-1]
+        batch_features = self.train.features[self._i:self._i+batch_size][0:ImagePlaceholders.feature_width - 50]
+        batch_labels = self.train.features[self._i:self._i + batch_size][ImagePlaceholders.feature_width:-1]
         self._i = (self._i + batch_size) % len(self.train.features)
         return batch_features, batch_labels
 
@@ -101,21 +102,21 @@ class KaggleRNNDataSet(object):
     def get_features_and_labels(self, batch_data):
         labels = np.array(list(map(lambda x: x.label, batch_data)))
         labels = labels.reshape(-1, 1)
-        features = np.array(list(map(lambda x: x.get_feature_from_sample(), batch_data))).reshape(-1, Placeholders.feature_width)
+        features = np.array(list(map(lambda x: x.get_feature_from_sample(), batch_data))).reshape(-1, ImagePlaceholders.feature_width)
 
         # print(labels.shape , images.shape)
-        labels = self.one_hot(np.hstack([int(d) for d in labels]), Placeholders.n_classes)
+        labels = self.one_hot(np.hstack([int(d) for d in labels]), ImagePlaceholders.n_classes)
         # print(features.shape , labels.shape)
         return np.array(features), np.array(labels)
 
     def get_normalized_dataset(self):
         index = 0
         normalized_features = np.array([]).reshape((len(self.features), 0))
-        normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + Placeholders.img_feature_width])))
+        normalized_features = np.hstack((normalized_features, preprocessing.scale(self.features[:,index : index + ImagePlaceholders.img_feature_width])))
         normalized_features = np.hstack((normalized_features, self.labels))
         return normalized_features
 
-    def one_hot(self, vec, vals = Placeholders.n_classes):
+    def one_hot(self, vec, vals = ImagePlaceholders.n_classes):
         n = len(vec)
         out = np.zeros((n, vals))
         out[range(n), vec] = 1
@@ -143,7 +144,7 @@ class KaggleRNNSample(object):
         return image_data[:,:,:3]
 
     def get_fc7_representation(self, sample):
-        image = np.array(sample).reshape((-1, Placeholders.img_dim, Placeholders.img_dim, Placeholders.n_channels))
+        image = np.array(sample).reshape((-1, ImagePlaceholders.img_dim, ImagePlaceholders.img_dim, ImagePlaceholders.n_channels))
         fc7rep = self.sess.run(self.fc7, feed_dict={x: image , Placeholders.adience_keep_prob: 1.0})
         return np.array(fc7rep)
 
@@ -151,7 +152,7 @@ class KaggleRNNSample(object):
 
     def get_feature_from_sample(self):
         features = np.array([]).reshape((1, 0))
-        fc7_x = np.zeros((1,Placeholders.img_feature_width))
+        fc7_x = np.zeros((1,ImagePlaceholders.img_feature_width))
         try:
             fc7_x = self.get_fc7_representation(self.get_image_data())
         except:
